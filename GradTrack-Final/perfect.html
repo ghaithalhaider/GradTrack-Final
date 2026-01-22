@@ -1,76 +1,0 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-
-<body>
-    <div class="header">
-        <div class="logo">GradTrack 🔐</div>
-        <nav class="navbar">
-            <!-- الصفحة الرئيسية -->
-            <div class="nav-item">
-                <button class="nav-btn" onclick="window.adminApp.loadPage('dashboard')">
-                    🏠 الصفحة الرئيسية
-                </button>
-            </div>
-
-            <!-- الإدارة العامة -->
-            <div class="nav-item">
-                <button class="nav-btn" onclick="window.adminApp.loadPage('general')">
-                    ⚙️ الإدارة العامة
-                </button>
-            </div>
-
-            <!-- إدارة المستخدمين -->
-            <div class="nav-item">
-                <button class="nav-btn" onclick="window.adminApp.loadPage('users')">
-                    👥 إدارة المستخدمين
-                </button>
-            </div>
-
-            <!-- إدارة المشرفين -->
-            <div class="nav-item">
-                <button class="nav-btn" onclick="window.adminApp.loadPage('supervisors')">
-                    👨‍🏫 إدارة المشرفين
-                </button>
-            </div>
-
-            <!-- إدارة المشاريع -->
-            <div class="nav-item">
-                <button class="nav-btn" onclick="window.adminApp.loadPage('projects')">
-                    📚 إدارة المشاريع
-                </button>
-            </div>
-
-            <!-- إعدادات النظام -->
-            <div class="nav-item">
-                <button class="nav-btn" onclick="window.adminApp.loadPage('settings')">
-                    🔧 إعدادات النظام
-                </button>
-            </div>
-
-            <!-- تسجيل الخروج -->
-            <div class="nav-item">
-                <button class="nav-btn logout-btn" onclick="window.adminApp.logout()">
-                    🚪 تسجيل الخروج
-                </button>
-            </div>
-        </nav>
-    </div>
-
-    <div class="main-content">
-        <div id="content-area"></div>
-    </div>
-
-    <script type="module" src="js/admin-main.js"></script>
-</body>
-
-</html>
-
-</body>
-
-</html>
