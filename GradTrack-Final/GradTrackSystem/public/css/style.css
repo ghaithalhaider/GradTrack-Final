@@ -1,0 +1,134 @@
+/* Global Variables & Reset */
+:root {
+    --primary-color: #6a11cb;
+    --secondary-color: #2575fc;
+    --accent-color: #ff007f; /* Example accent */
+    --background-light: #f4f6f9;
+    --text-dark: #333333;
+    --white: #ffffff;
+    --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    --sidebar-width: 250px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--background-light);
+    color: var(--text-dark);
+    direction: rtl; /* RTL Support */
+    text-align: right;
+    min-height: 100vh;
+}
+
+/* Gradient Background Utility */
+.bg-gradient {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: var(--white);
+}
+
+/* Auth Pages (Login/Register) */
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+}
+
+.auth-box {
+    background: var(--white);
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.auth-box h2 {
+    margin-bottom: 1.5rem;
+    color: var(--primary-color);
+}
+
+.form-group {
+    margin-bottom: 1rem;
+    text-align: right;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+.form-group input, .form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 1rem;
+    font-family: inherit;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: var(--white);
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    width: 100%;
+    transition: background 0.3s;
+}
+
+.btn-primary:hover {
+    background: #5a0eb3;
+}
+
+/* Dashboard Layout */
+.dashboard-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: var(--sidebar-width);
+    background: var(--primary-color); /* Fallback */
+    background: linear-gradient(180deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: var(--white);
+    padding: 1rem;
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    overflow-y: auto;
+}
+
+.main-content {
+    margin-right: var(--sidebar-width); /* Push content for RTL sidebar */
+    width: calc(100% - var(--sidebar-width));
+    padding: 2rem;
+}
+
+/* Utilities */
+.hidden {
+    display: none !important;
+}
+
+.text-center {
+    text-align: center;
+}
+
+a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}
