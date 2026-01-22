@@ -1,0 +1,87 @@
+<!-- Projects Management Container -->
+<div class="projects-management-container">
+    <div class="page-header">
+        <h2>📊 إدارة المشاريع</h2>
+        <p>قم بإدارة مشاريع التخرج الخاصة بك</p>
+    </div>
+
+    <!-- Projects Section -->
+    <div id="projectsSection" class="projects-section">
+
+        <!-- Existing Projects List -->
+        <div class="projects-list">
+            <h3>📋 المشاريع المضافة</h3>
+            <div id="projectsContainer">
+                <div class="loading-state" style="text-align:center; padding:20px;">جاري التحميل...</div>
+            </div>
+        </div>
+
+        <!-- Add New Project Button -->
+        <!-- Calls global showProjectForm() from projects.js -->
+        <button class="btn btn-add-project" onclick="showProjectForm()">
+            ➕ إضافة مشروع جديد
+        </button>
+
+        <!-- Publish Projects Button -->
+        <button class="btn btn-publish-all" onclick="publishAllProjects()" id="publishBtn"
+            style="display: none; width:100%;">
+            📤 حفظ المشاريع وإرسالها
+        </button>
+    </div>
+</div>
+
+<!-- Add Project Modal -->
+<div id="addProjectModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>➕ إضافة مشروع جديد</h3>
+            <!-- Calls global closeProjectModal() -->
+            <button class="close-btn" onclick="closeProjectModal()">✖</button>
+        </div>
+
+        <!-- Calls global addProject(event) -->
+        <form id="addProjectForm" onsubmit="addProject(event)">
+
+            <div class="form-group">
+                <label>رقم المشروع</label>
+                <input type="text" id="projectNumber" readonly class="form-input" style="background:#eee;">
+            </div>
+
+            <div class="form-group">
+                <label>عنوان المشروع *</label>
+                <input type="text" id="projectTitle" class="form-input" placeholder="مثال: نظام إدارة المكتبات"
+                    required>
+            </div>
+
+            <div class="form-group">
+                <label>وصف المشروع *</label>
+                <textarea id="projectDescription" class="form-input" rows="5"
+                    placeholder="اكتب وصفاً تفصيلياً للمشروع..." required style="height:100px;"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>موجه الى طلبة *</label>
+                <div class="radio-group">
+                    <label class="radio-label">
+                        <input type="radio" name="studyType" value="صباحي" required>
+                        <span> صباحية</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="studyType" value="مسائي">
+                        <span> مسائية</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="studyType" value="both">
+                        <span>الكل</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="submit-btn" style="width:auto; padding:10px 30px;">💾 حفظ المشروع</button>
+                <button type="button" class="btn btn-secondary" onclick="closeProjectModal()"
+                    style="width:auto; padding:10px 20px;">❌ إلغاء</button>
+            </div>
+        </form>
+    </div>
+</div>

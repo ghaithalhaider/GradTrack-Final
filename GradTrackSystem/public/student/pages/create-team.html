@@ -1,0 +1,34 @@
+<div class="card" style="max-width: 800px; margin: 0 auto;">
+    <h2 class="mb-4">🌱 إنشاء فريق جديد</h2>
+
+    <div id="create-team-container">
+        <form id="createTeamForm">
+            <div class="mb-4">
+                <label>اسم الفريق</label>
+                <input type="text" id="teamName" class="form-control"
+                    style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px;" required>
+            </div>
+
+            <div class="mb-4">
+                <label>القائد (أنت)</label>
+                <input type="text" id="leaderName" class="form-control"
+                    style="width:100%; padding:10px; background:#eee; border:none;" readonly>
+            </div>
+
+            <div class="mb-4">
+                <label>الأعضاء (Usernames)</label>
+                <div id="members-list">
+                    <!-- Members inputs will go here -->
+                </div>
+                <button type="button" id="addMemberBtn" class="btn"
+                    style="background:#ddd; color:#333; margin-top:10px;">+ إضافة عضو</button>
+            </div>
+
+            <div class="mb-4" style="text-align:left;">
+                <span id="member-counter" style="font-weight:bold; color:var(--primary);">1 / 4</span>
+            </div>
+
+            <button type="submit" class="btn" style="width:100%;">إنشاء الفريق</button>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GradTrack | الإدارة العامة 🔐</title>
+    <link rel="stylesheet" href="../student/css/style.css">
+    <style>
+        .general-management-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .management-title {
+            color: white;
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 2.5em;
+            font-weight: 700;
+        }
+
+        .control-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .control-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            border-right: 5px solid var(--primary);
+            transition: all 0.3s ease;
+        }
+
+        .control-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .control-card.projects {
+            border-right-color: #667eea;
+        }
+
+        .control-card.view {
+            border-right-color: #764ba2;
+        }
+
+        .control-card.publish {
+            border-right-color: #ff9800;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            color: #333;
+            font-size: 1.3em;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .status-icon {
+            font-size: 2.5em;
+        }
+
+        .card-description {
+            color: #666;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .status-badge {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .status-active {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .status-inactive {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .toggle-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Cairo', Arial;
+            font-weight: 700;
+            font-size: 1em;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-enable {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+        }
+
+        .btn-disable {
+            background: linear-gradient(135deg, #f44336 0%, #da190b 100%);
+            color: white;
+        }
+
+        .summary-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .summary-title {
+            color: #333;
+            font-size: 1.5em;
+            font-weight: 700;
+            margin: 0 0 20px 0;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .summary-item {
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            border-right: 4px solid var(--primary);
+        }
+
+        .summary-label {
+            color: #666;
+            margin: 0;
+            font-size: 0.95em;
+        }
+
+        .summary-value {
+            font-size: 1.4em;
+            font-weight: 700;
+            margin: 10px 0 0 0;
+        }
+
+        .instructions-section {
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            border-right: 4px solid #2196f3;
+            border-radius: 10px;
+            padding: 25px;
+            margin-top: 30px;
+        }
+
+        .instructions-title {
+            color: #1565c0;
+            font-size: 1.2em;
+            font-weight: 700;
+            margin: 0 0 15px 0;
+        }
+
+        .instructions-list {
+            color: #333;
+            margin: 0;
+            padding-right: 20px;
+        }
+
+        .instructions-list li {
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }
+
+        .instructions-list strong {
+            color: #1565c0;
+        }
+
+        .loading-spinner {
+            text-align: center;
+            padding: 40px;
+            color: white;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .back-btn {
+            display: inline-block;
+            background: white;
+            color: #667eea;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            transform: translateX(5px);
+        }
+    </style>
+</head>
+
+<body style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh;">
+    <div class="general-management-container">
+        <a href="dashboard.html" class="back-btn">← العودة إلى لوحة التحكم</a>
+
+        <h1 class="management-title">⚡ الإدارة العامة للنظام</h1>
+
+        <div id="loadingDiv" class="loading-spinner">
+            <div class="spinner"></div>
+            <p>جاري تحميل الإعدادات...</p>
+        </div>
+
+        <div id="contentDiv" style="display: none;">
+            <!-- كروت التحكم -->
+            <div class="control-cards">
+                <!-- رفع المشاريع -->
+                <div class="control-card projects">
+                    <div class="card-header">
+                        <h3 class="card-title">📤 السماح برفع المشاريع</h3>
+                        <div class="status-icon" id="uploadIcon">❌</div>
+                    </div>
+                    <p class="card-description">السماح للأساتذة برفع المشاريع الجديدة إلى النظام</p>
+                    <div class="status-badge" id="uploadStatus">الحالة الحالية: معطل</div>
+                    <button class="toggle-btn btn-enable" onclick="toggleProjectUpload()" id="uploadBtn">
+                        ✅ تفعيل الرفع
+                    </button>
+                </div>
+
+                <!-- عرض المشاريع للطلاب -->
+                <div class="control-card view">
+                    <div class="card-header">
+                        <h3 class="card-title">👁️ عرض المشاريع للطلاب</h3>
+                        <div class="status-icon" id="viewIcon">❌</div>
+                    </div>
+                    <p class="card-description">السماح للطلاب برؤية المشاريع المتاحة</p>
+                    <div class="status-badge" id="viewStatus">الحالة الحالية: مخفي</div>
+                    <button class="toggle-btn btn-enable" onclick="toggleStudentView()" id="viewBtn">
+                        ✅ إظهار المشاريع
+                    </button>
+                </div>
+
+                <!-- نشر المشاريع -->
+                <div class="control-card publish">
+                    <div class="card-header">
+                        <h3 class="card-title">🚀 نشر المشاريع</h3>
+                        <div class="status-icon" id="publishIcon">❌</div>
+                    </div>
+                    <p class="card-description">بدء عملية الاختيار الرسمية للطلاب</p>
+                    <div class="status-badge" id="publishStatus">الحالة الحالية: لم تبدأ</div>
+                    <button class="toggle-btn btn-enable" onclick="togglePublishProjects()" id="publishBtn">
+                        ✅ بدء النشر
+                    </button>
+                </div>
+            </div>
+
+            <!-- ملخص الحالة -->
+            <div class="summary-section">
+                <h3 class="summary-title">📊 ملخص الحالة الحالية:</h3>
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <p class="summary-label">حالة رفع المشاريع من الأستاذ:</p>
+                        <p class="summary-value" id="summaryUpload">❌ معطل</p>
+                    </div>
+                    <div class="summary-item">
+                        <p class="summary-label">حالة رؤية الطلاب للمشاريع:</p>
+                        <p class="summary-value" id="summaryView">❌ مخفي</p>
+                    </div>
+                    <div class="summary-item">
+                        <p class="summary-label">حالة عملية الاختيار:</p>
+                        <p class="summary-value" id="summaryPublish">❌ لم تبدأ</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- التعليمات -->
+            <div class="instructions-section">
+                <h4 class="instructions-title">📝 تعليمات الاستخدام:</h4>
+                <ul class="instructions-list">
+                    <li><strong>الخطوة 1:</strong> فعّل "السماح برفع المشاريع" ليتمكن الأساتذة من إضافة مشاريع جديدة
+                    </li>
+                    <li><strong>الخطوة 2:</strong> فعّل "عرض المشاريع للطلاب" ليرى الطلاب المشاريع المتاحة</li>
+                    <li><strong>الخطوة 3:</strong> فعّل "نشر المشاريع" لبدء عملية الاختيار الرسمية</li>
+                    <li><strong>ملاحظة مهمة:</strong> إذا تم تعطيل أي خاصية، لن يستطيع المستخدمون (أساتذة/طلاب) الوصول
+                        إليها وستظهر لهم رسالة توضيحية</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDKM4ZYHYnko97QykRhdzPvYQOKqZHBc_E",
+            authDomain: "gradtracksystem.firebaseapp.com",
+            projectId: "gradtracksystem",
+            storageBucket: "gradtracksystem.firebasestorage.app",
+            messagingSenderId: "370902148558",
+            appId: "1:370902148558:web:4e883764f7a7c1bb15379f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let currentSettings = {};
+
+        async function loadSettings() {
+            try {
+                const settingsDoc = await getDoc(doc(db, "settings", "general"));
+                currentSettings = settingsDoc.exists() ? settingsDoc.data() : {
+                    allowProjectUpload: false,
+                    allowStudentView: false,
+                    projectsPublished: false
+                };
+                updateUI();
+                document.getElementById('loadingDiv').style.display = 'none';
+                document.getElementById('contentDiv').style.display = 'block';
+            } catch (error) {
+                console.error("Error loading settings:", error);
+                document.getElementById('loadingDiv').innerHTML = `
+                    <p style="color: #ff6b6b;">❌ حدث خطأ: ${error.message}</p>
+                `;
+            }
+        }
+
+        function updateUI() {
+            // تحديث أيقونات وحالة الأزرار
+            const upload = currentSettings.allowProjectUpload || false;
+            const view = currentSettings.allowStudentView || false;
+            const publish = currentSettings.projectsPublished || false;
+
+            // تحديث أيقونات
+            document.getElementById('uploadIcon').textContent = upload ? '✅' : '❌';
+            document.getElementById('viewIcon').textContent = view ? '✅' : '❌';
+            document.getElementById('publishIcon').textContent = publish ? '✅' : '❌';
+
+            // تحديث حالات
+            document.getElementById('uploadStatus').textContent = `الحالة الحالية: ${upload ? '🟢 مفعل' : '🔴 معطل'}`;
+            document.getElementById('uploadStatus').className = `status-badge ${upload ? 'status-active' : 'status-inactive'}`;
+
+            document.getElementById('viewStatus').textContent = `الحالة الحالية: ${view ? '🟢 مرئي' : '🔴 مخفي'}`;
+            document.getElementById('viewStatus').className = `status-badge ${view ? 'status-active' : 'status-inactive'}`;
+
+            document.getElementById('publishStatus').textContent = `الحالة الحالية: ${publish ? '🟠 قيد النشر' : '🔴 لم تبدأ'}`;
+            document.getElementById('publishStatus').className = `status-badge ${publish ? 'status-active' : 'status-inactive'}`;
+
+            // تحديث الأزرار
+            document.getElementById('uploadBtn').textContent = upload ? '❌ تعطيل الرفع' : '✅ تفعيل الرفع';
+            document.getElementById('uploadBtn').className = `toggle-btn ${upload ? 'btn-disable' : 'btn-enable'}`;
+
+            document.getElementById('viewBtn').textContent = view ? '❌ إخفاء المشاريع' : '✅ إظهار المشاريع';
+            document.getElementById('viewBtn').className = `toggle-btn ${view ? 'btn-disable' : 'btn-enable'}`;
+
+            document.getElementById('publishBtn').textContent = publish ? '❌ إيقاف النشر' : '✅ بدء النشر';
+            document.getElementById('publishBtn').className = `toggle-btn ${publish ? 'btn-disable' : 'btn-enable'}`;
+
+            // تحديث الملخص
+            document.getElementById('summaryUpload').textContent = upload ? '✅ مفعل' : '❌ معطل';
+            document.getElementById('summaryView').textContent = view ? '✅ مرئي' : '❌ مخفي';
+            document.getElementById('summaryPublish').textContent = publish ? '✅ قيد النشر' : '❌ لم تبدأ';
+        }
+
+        window.toggleProjectUpload = async function () {
+            try {
+                const newValue = !currentSettings.allowProjectUpload;
+                await updateDoc(doc(db, "settings", "general"), {
+                    allowProjectUpload: newValue
+                });
+                currentSettings.allowProjectUpload = newValue;
+                updateUI();
+                alert(newValue ? "✅ تم تفعيل رفع المشاريع" : "❌ تم تعطيل رفع المشاريع");
+            } catch (error) {
+                alert("❌ خطأ: " + error.message);
+            }
+        };
+
+        window.toggleStudentView = async function () {
+            try {
+                const newValue = !currentSettings.allowStudentView;
+                await updateDoc(doc(db, "settings", "general"), {
+                    allowStudentView: newValue
+                });
+                currentSettings.allowStudentView = newValue;
+                updateUI();
+                alert(newValue ? "✅ تم إظهار المشاريع للطلاب" : "❌ تم إخفاء المشاريع");
+            } catch (error) {
+                alert("❌ خطأ: " + error.message);
+            }
+        };
+
+        window.togglePublishProjects = async function () {
+            try {
+                const newValue = !currentSettings.projectsPublished;
+                await updateDoc(doc(db, "settings", "general"), {
+                    projectsPublished: newValue
+                });
+                currentSettings.projectsPublished = newValue;
+                updateUI();
+                alert(newValue ? "✅ تم بدء نشر المشاريع" : "❌ تم إيقاف النشر");
+            } catch (error) {
+                alert("❌ خطأ: " + error.message);
+            }
+        };
+
+        // تحميل الإعدادات عند الدخول
+        loadSettings();
+    </script>
+</body>
+
+</html>

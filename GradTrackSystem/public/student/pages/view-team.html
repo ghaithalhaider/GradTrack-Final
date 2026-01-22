@@ -1,0 +1,35 @@
+<div id="view-team-container">
+    <div id="no-team-msg" class="text-center hidden">
+        <h2>❌ ليس لديك فريق حالياً</h2>
+        <button class="btn mt-4" onclick="window.loadCreateTeamPage()">إنشاء فريق جديد</button>
+    </div>
+
+    <div id="team-details" class="hidden">
+        <div class="card mb-4 text-center">
+            <h1 id="vt-teamName">اسم الفريق</h1>
+            <span id="vt-teamCode"
+                style="background:var(--light); padding:5px 15px; border-radius:20px; font-family:monospace; font-size:1.2rem;">CODE123</span>
+        </div>
+
+        <div style="display:flex; gap:20px; flex-wrap:wrap; justify-content:center;" class="mb-4">
+            <div class="card" style="flex:1; text-align:center;">
+                <h3>الأعضاء</h3>
+                <h2 id="vt-memberCount">4</h2>
+            </div>
+            <div class="card" style="flex:1; text-align:center;">
+                <h3>أعلى معدل GPA</h3>
+                <h2 id="vt-highestGPA">0.0</h2>
+            </div>
+            <div class="card" style="flex:1; text-align:center;">
+                <h3>حالة القفل</h3>
+                <h2 id="vt-isLocked">🔓 مفتوح</h2>
+            </div>
+        </div>
+
+        <h3 class="mb-4">أعضاء الفريق</h3>
+        <div id="vt-membersGrid"
+            style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:20px;">
+            <!-- Member Cards -->
+        </div>
+    </div>
+</div>

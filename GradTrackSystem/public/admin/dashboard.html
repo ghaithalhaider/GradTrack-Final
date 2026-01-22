@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GradTrack | الإدارة 🔐</title>
+    <link rel="stylesheet" href="../student/css/style.css">
+    <style>
+        .admin-custom {
+            margin-top: 30px;
+        }
+
+        .teams-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .team-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            border-right: 5px solid var(--primary);
+            transition: all 0.3s ease;
+        }
+
+        .team-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .team-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .team-name {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .team-members-count {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .team-info {
+            margin: 15px 0;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .info-label {
+            color: #666;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .info-value {
+            color: #333;
+            font-size: 1.1em;
+            font-weight: 700;
+        }
+
+        .gpa-badge {
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 1.2em;
+            text-align: center;
+            min-width: 100px;
+        }
+
+        .gpa-excellent {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+        }
+
+        .gpa-good {
+            background: linear-gradient(135deg, #2196F3 0%, #1976d2 100%);
+            color: white;
+        }
+
+        .gpa-average {
+            background: linear-gradient(135deg, #FF9800 0%, #e68900 100%);
+            color: white;
+        }
+
+        .gpa-low {
+            background: linear-gradient(135deg, #f44336 0%, #da190b 100%);
+            color: white;
+        }
+
+        .team-members {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .member-item {
+            padding: 8px 0;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .member-item strong {
+            color: #333;
+        }
+
+        .team-code {
+            background: #e3f2fd;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 0.85em;
+            color: #1565c0;
+            font-weight: 600;
+            word-break: break-all;
+        }
+
+        .stats-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            color: #666;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+
+        .search-filter {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .search-filter input,
+        .search-filter select {
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-family: 'Cairo', Arial;
+            font-size: 1em;
+        }
+
+        .gpa-input {
+            width: 100px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .empty-state-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+
+        .loading-spinner {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="logo">GradTrack 🔐</div>
+        <nav class="navbar">
+            <!-- الصفحة الرئيسية -->
+            <div class="nav-item">
+                <button class="nav-btn" onclick="window.adminApp.loadPage('dashboard')">
+                    🏠 الصفحة الرئيسية
+                </button>
+            </div>
+
+            <!-- الإدارة العامة -->
+            <div class="nav-item">
+                <button class="nav-btn" onclick="window.adminApp.loadPage('general')">
+                    ⚡ الإدارة العامة
+                </button>
+            </div>
+
+            <!-- الفرق والطلاب -->
+            <!-- الفرق والطلاب -->
+            <div class="nav-item">
+                <button class="nav-btn" onclick="toggleMenu(this)">
+                    👥 الفرق والطلاب
+                    <span class="arrow">▼</span>
+                </button>
+                <div class="dropdown-menu">
+                    <div style="padding: 5px 15px; font-weight:bold; color:var(--primary); background:#f8f9fa;">👨‍🎓
+                        الطلاب</div>
+                    <a href="#" class="dropdown-item" onclick="window.adminApp.loadPage('students-morning')">دراسة
+                        صباحية</a>
+                    <a href="#" class="dropdown-item" onclick="window.adminApp.loadPage('students-evening')">دراسة
+                        مسائية</a>
+
+                    <div style="border-top:1px solid #eee; margin:5px 0;"></div>
+
+                    <div style="padding: 5px 15px; font-weight:bold; color:var(--primary); background:#f8f9fa;">👥 الفرق
+                    </div>
+                    <a href="#" class="dropdown-item" onclick="window.adminApp.loadPage('teams-morning')">فرق
+                        الصباحي</a>
+                    <a href="#" class="dropdown-item" onclick="window.adminApp.loadPage('teams-evening')">فرق
+                        المسائي</a>
+                </div>
+            </div>
+
+            <!-- المشاريع -->
+            <div class="nav-item">
+                <button class="nav-btn" onclick="toggleMenu(this)">
+                    📊 المشاريع
+                    <span class="arrow">▼</span>
+                </button>
+                <div class="dropdown-menu">
+                    <a href="#" class="dropdown-item" onclick="window.adminApp.loadPage('projects')">مشاريع الأساتذة</a>
+                    <a href="#" class="dropdown-item" onclick="window.adminApp.loadPage('selections')">اختيارات
+                        الطلاب</a>
+                </div>
+            </div>
+
+            <!-- المفاضلة والتوزيع -->
+            <div class="nav-item">
+                <button class="nav-btn" onclick="toggleMenu(this)">
+                    🎯 المفاضلة والتوزيع
+                    <span class="arrow">▼</span>
+                </button>
+                <div class="dropdown-menu">
+                    <a href="#" class="dropdown-item" onclick="window.adminApp.loadPage('distribution')">توزيع
+                        المشاريع</a>
+                    <a href="#" class="dropdown-item" onclick="window.adminApp.loadPage('results')">النتائج النهائية</a>
+                </div>
+            </div>
+
+            <!-- الإعدادات -->
+            <div class="nav-item">
+                <button class="nav-btn" onclick="toggleMenu(this)">
+                    ⚙️ الإعدادات
+                    <span class="arrow">▼</span>
+                </button>
+                <div class="dropdown-menu">
+                    <a href="#" class="dropdown-item" onclick="window.adminApp.loadPage('settings')">الإعدادات
+                        العامة</a>
+                    <a href="#" class="dropdown-item" onclick="window.adminApp.loadPage('security')">الأمان</a>
+                </div>
+            </div>
+
+            <!-- تسجيل الخروج -->
+            <div class="nav-item">
+                <button class="nav-btn" id="logoutBtn">
+                    🚪 تسجيل الخروج
+                </button>
+            </div>
+
+        </nav>
+    </div>
+
+    <div class="content-area">
+        <div class="welcome-message">
+            <h1>مرحباً بك في لوحة تحكم الإدارة 🔐</h1>
+            <p>إدارة شاملة للفرق والمشاريع والمفاضلة</p>
+            <p>يمكنك إدارة بيانات الطلاب والفرق والمشاريع، وتنفيذ المفاضلة الآلية</p>
+        </div>
+    </div>
+
+    <script type="module" src="js/admin-main.js"></script>
+</body>
+
+</html>
