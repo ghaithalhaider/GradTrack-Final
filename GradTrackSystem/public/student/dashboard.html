@@ -1,124 +1,0 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GradTrack 📱</title>
-    <link rel="stylesheet" href="css/style.css">
-</head>
-
-<body>
-    <div class="header">
-        <div class="logo">GradTrack 📱</div>
-        <nav class="navbar">
-            <!-- الصفحة الرئيسية -->
-            <div class="nav-item">
-                <button class="nav-btn" onclick="window.dashboardApp.loadPage('dashboard')">
-                    🏠 الصفحة الرئيسية
-                </button>
-            </div>
-
-            <!-- فريقي -->
-            <div class="nav-item">
-                <button class="nav-btn" onclick="toggleMenu(this)">
-                    👤 فريقي
-                    <span class="arrow">▼</span>
-                </button>
-                <div class="dropdown-menu">
-                    <a href="#" class="dropdown-item" onclick="window.dashboardApp.loadPage('create-team')">انشاء
-                        فريق</a>
-                    <a href="#" class="dropdown-item" onclick="window.dashboardApp.loadPage('view-team')">عرض الفريق</a>
-                </div>
-            </div>
-
-            <!-- المشاريع -->
-            <div class="nav-item">
-                <button class="nav-btn" onclick="toggleMenu(this)">
-                    📊 المشاريع
-                    <span class="arrow">▼</span>
-                </button>
-                <div class="dropdown-menu">
-                    <a href="#" class="dropdown-item" onclick="window.dashboardApp.loadPage('current-project')">مشروعي
-                        الحالي</a>
-                    <a href="#" class="dropdown-item" onclick="window.dashboardApp.loadPage('select-project')">اختيار
-                        مشروع</a>
-                </div>
-            </div>
-
-            <!-- المهام -->
-            <div class="nav-item">
-                <button class="nav-btn" onclick="toggleMenu(this)">
-                    📋 المهام
-                    <span class="arrow">▼</span>
-                </button>
-                <div class="dropdown-menu">
-                    <a href="#" class="dropdown-item" onclick="window.dashboardApp.loadPage('tasks-current')">المهام
-                        الحالية</a>
-                    <a href="#" class="dropdown-item" onclick="window.dashboardApp.loadPage('tasks-completed')">المهام
-                        المكتملة</a>
-                </div>
-            </div>
-
-            <!-- إعدادات الحساب -->
-            <div class="nav-item">
-                <button class="nav-btn" onclick="toggleMenu(this)">
-                    ⚙️ إعدادات الحساب
-                    <span class="arrow">▼</span>
-                </button>
-                <div class="dropdown-menu">
-                    <a href="#" class="dropdown-item"
-                        onclick="window.dashboardApp.loadPage('settings-general')">الإعدادات العامة</a>
-                    <a href="#" class="dropdown-item"
-                        onclick="window.dashboardApp.loadPage('settings-privacy')">الخصوصية والأمان</a>
-                </div>
-            </div>
-
-            <!-- التنبيهات -->
-            <div class="nav-item">
-                <button class="nav-btn" onclick="window.dashboardApp.toggleNotifications()" style="position: relative;">
-                    🔔 التنبيهات
-                    <span id="notificationBadge"
-                        style="position: absolute; top: 5px; right: 5px; background: #ff4444; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: bold; display: none;">0</span>
-                </button>
-                <div class="dropdown-menu" id="notificationsPanel"
-                    style="display: none; width: 350px; max-height: 500px; overflow-y: auto; box-shadow: 0 8px 30px rgba(0,0,0,0.15);">
-                    <div style="padding: 15px; border-bottom: 1px solid #eee; background: #f8f9fa;">
-                        <h3 style="margin: 0; color: #333; font-size: 1.1em;">📬 التنبيهات</h3>
-                    </div>
-                    <div id="notificationsList" style="max-height: 400px; overflow-y: auto;">
-                        <div style="padding: 30px 20px; text-align: center; color: #999;">
-                            <p>لا توجد تنبيهات جديدة</p>
-                        </div>
-                    </div>
-                    <div style="padding: 10px; border-top: 1px solid #eee; background: #f8f9fa; text-align: center;">
-                        <button onclick="window.dashboardApp.clearAllNotifications()"
-                            style="background: none; border: none; color: #ff4444; cursor: pointer; font-weight: 500;">🗑️
-                            مسح الكل</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- تسجيل الخروج -->
-            <div class="nav-item">
-                <button class="nav-btn" id="logoutBtn">
-                    📚 تسجيل الخروج
-                </button>
-            </div>
-
-        </nav>
-    </div>
-
-    <div class="content-area">
-        <div class="welcome-message">
-            <h1>مرحباً بك في نظام GradTrack 🎓</h1>
-            <p>اختر أحد القوائم أعلاه للبدء</p>
-            <p>يمكنك انشاء فريق والتقديم على مشروع التخرج</p>
-        </div>
-    </div>
-
-    <script type="module" src="js/firebase-config.js"></script>
-    <script type="module" src="js/main.js"></script>
-</body>
-
-</html>
