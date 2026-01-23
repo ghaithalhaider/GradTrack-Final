@@ -1,3 +1,4 @@
+
 import { auth, db } from '../../student/js/firebase-config.js';
 import { runDistributionAlgorithm } from './distribution-logic.js';
 
@@ -149,21 +150,15 @@ window.adminApp = {
             </div>
         `;
         document.body.insertAdjacentHTML('beforeend', modalHtml);
-    }
+    },
+
+
 };
 
-// Global toggleMenu function for dropdowns
-window.toggleMenu = function (button) {
-    const dropdown = button.nextElementSibling;
-    const parent = button.parentElement;
+// ToggleMenu is already defined at the top. Removed duplicate.
 
-    // Close other dropdowns
-    document.querySelectorAll('.nav-item').forEach(item => {
-        if (item !== parent) item.classList.remove('active');
-    });
 
-    parent.classList.toggle('active');
-};
+
 
 // Close dropdowns when clicking outside
 document.addEventListener('click', (e) => {
@@ -1230,7 +1225,7 @@ async function loadDistributionPage() {
 }
 
 // Run Distribution Algorithm
-window.adminApp.runDistributionAlgorithm_OLD = async function () {
+window.adminApp.runDistributionAlgorithm = async function () {
     if (!confirm("هل أنت متأكد من بدء عملية التوزيع؟ سيتم تحديث مشاريع الفرق.")) return;
 
     const loadingDiv = document.createElement('div');
@@ -1238,7 +1233,7 @@ window.adminApp.runDistributionAlgorithm_OLD = async function () {
     loadingDiv.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:white;';
     loadingDiv.innerHTML = `
         <div style="border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
-        <h3>جاري تنفيذ الخوارزمية...</h3>
+        <h3>جاري تنفيذ الخوارزمية (GPSPA)...</h3>
         <p id="distStatus">تحميل البيانات...</p>
     `;
     document.body.appendChild(loadingDiv);
@@ -1247,88 +1242,63 @@ window.adminApp.runDistributionAlgorithm_OLD = async function () {
         const updateStatus = (msg) => document.getElementById('distStatus').textContent = msg;
 
         // 1. Fetch Data
+        updateStatus("جلب بيانات الفرق والطلاب...");
         const teamsSnapshot = await getDocs(collection(db, "teams"));
-        const projectsSnapshot = await getDocs(collection(db, "projects")); // To check capacity if needed, currently assuming 1
-
-        let teams = [];
-        teamsSnapshot.forEach(doc => {
-            const data = doc.data();
-            teams.push({
-                id: doc.id,
-                ...data,
-                gpa: parseFloat(window.adminApp.calculateTeamGPA(data.members || [])) || 0 // Assuming members stored or we fetch them. 
-                // Wait, members might not be fully stored in 'teams', usually only UIDs.
-                // admin-main.js loadTeamsPage fetches students to calculate GPA.
-                // For simplicity/speed in this fix, let's rely on 'teamGPA' if it exists, or fetch students if critical.
-                // Let's assume for now we do a simple First-Come/Priority distribution or Random if GPA missing.
-                // Better: fetch all students to map them to teams for accurate GPA.
-            });
-        });
-
-        // Fetch students for GPA calculation correctness
-        updateStatus("حساب معدلات الفرق...");
         const studentsSnapshot = await getDocs(collection(db, "students"));
-        const studentsMap = {};
-        studentsSnapshot.forEach(doc => studentsMap[doc.id] = doc.data());
 
-        // Recalculate GPA properly
-        teams = teams.map(team => {
-            let totalGpa = 0;
-            let count = 0;
-            if (team.memberUIDs && team.memberUIDs.length > 0) {
-                team.memberUIDs.forEach(uid => {
-                    const s = studentsMap[uid];
-                    if (s) {
-                        totalGpa += parseFloat(s.gpa || 0);
-                        count++;
-                    }
-                });
-            }
-            const avgGpa = count > 0 ? (totalGpa / count) : 0;
-            return { ...team, calculatedGpa: avgGpa };
-        });
+        const teamsData = [];
+        teamsSnapshot.forEach(doc => teamsData.push({ id: doc.id, ...doc.data() }));
 
-        // Sort teams by GPA descending (Higher GPA gets priority)
-        teams.sort((a, b) => b.calculatedGpa - a.calculatedGpa);
+        const studentsData = [];
+        studentsSnapshot.forEach(doc => studentsData.push({ id: doc.id, ...doc.data() }));
 
-        updateStatus("توزيع المشاريع...");
+        // 2. Run Algorithm
+        updateStatus("تنفيذ خوارزمية التوزيع...");
+        // Call the imported, pure-logic function
+        const result = runDistributionAlgorithm(teamsData, studentsData);
 
-        const assignedProjects = new Set(); // Keep track of taken projects
+        // 3. Save Results
+        updateStatus(`جاري حفظ ${result.assignments.length} توزيع...`);
+
         const batch = writeBatch(db);
         let updatesCount = 0;
 
-        // Reset current assignments in memory first? No, we overwrite.
-
-        for (const team of teams) {
-            if (!team.selectedProjects || team.selectedProjects.length === 0) continue;
-
-            let assigned = null;
-            // Try 1st choice, then 2nd...
-            for (const projectId of team.selectedProjects) {
-                if (!assignedProjects.has(projectId)) {
-                    assigned = projectId;
-                    assignedProjects.add(projectId);
-                    break;
-                }
-            }
-
-            if (assigned) {
-                const teamRef = doc(db, "teams", team.id);
-                batch.update(teamRef, { assignedProjectId: assigned, assignedDate: new Date() });
-                updatesCount++;
-            }
+        // Apply assignments
+        for (const assignment of result.assignments) {
+            const teamRef = doc(db, "teams", assignment.teamId);
+            batch.update(teamRef, {
+                assignedProjectId: assignment.projectId,
+                assignedDate: new Date(),
+                assignedChoiceRank: assignment.choiceRank
+            });
+            updatesCount++;
         }
 
-        updateStatus(`جاري حفظ ${updatesCount} تغيير...`);
         await batch.commit();
 
         document.body.removeChild(loadingDiv);
-        alert(`✅ تمت عملية التوزيع بنجاح!\nتم توزيع ${updatesCount} فريق.`);
+
+        // Show Success Summary
+        let summary = `✅ تمت عملية التوزيع بنجاح!\n`;
+        summary += `--------------------------------\n`;
+        summary += `📊 الفرق الكلية: ${result.statistics.totalTeams}\n`;
+        summary += `✅ تم التوزيع: ${result.statistics.assignedCount}\n`;
+        summary += `⚠️ لم يتم التوزيع: ${result.statistics.unassignedCount}\n`;
+
+        if (result.statistics.duplicateProjects.length > 0) {
+            summary += `🚨 تنبيه: يوجد تكرار في ${result.statistics.duplicateProjects.length} مشروع!\n`;
+        }
+
+        alert(summary);
+
+        // Reload page to show results
         loadDistributionPage();
 
     } catch (error) {
         console.error("Distribution Error:", error);
-        document.body.removeChild(loadingDiv);
+        if (document.body.contains(loadingDiv)) {
+            document.body.removeChild(loadingDiv);
+        }
         alert("❌ حدث خطأ أثناء التوزيع: " + error.message);
     }
 };
@@ -1365,7 +1335,7 @@ window.adminApp.resetDistribution = async function () {
 
 
 // Load Results Page
-async function loadResultsPage_OLD() {
+async function loadResultsPage() {
     const contentArea = document.querySelector('.content-area');
     contentArea.innerHTML = `
         <div style="padding: 20px;">
@@ -1475,181 +1445,3 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('logoutBtn').onclick = () => window.adminApp.logout();
     });
 });
-
-// ============ New Distribution Logic ============
-window.adminApp.runDistributionAlgorithm = async function () {
-    if (!confirm("هل أنت متأكد من بدء عملية التوزيع؟ سيتم تحديث مشاريع الفرق بناءً على المعدل والرغبات.")) return;
-
-    const loadingDiv = document.createElement('div');
-    loadingDiv.id = 'distLoading';
-    loadingDiv.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:white;';
-    loadingDiv.innerHTML = `
-        <div style="border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
-        <h3>جاري تنفيذ الخوارزمية...</h3>
-        <p id="distStatus">تحميل البيانات...</p>
-    `;
-    document.body.appendChild(loadingDiv);
-
-    try {
-        const updateStatus = (msg) => document.getElementById('distStatus').textContent = msg;
-
-        // 1. Fetch Data
-        updateStatus("جلب بيانات الفرق والطلاب...");
-
-        const teamsSnapshot = await getDocs(collection(db, "teams"));
-        const studentsSnapshot = await getDocs(collection(db, "students"));
-
-        const teams = [];
-        teamsSnapshot.forEach(doc => teams.push({ id: doc.id, ...doc.data() }));
-
-        const students = [];
-        studentsSnapshot.forEach(doc => students.push({ id: doc.id, ...doc.data() }));
-
-        // 2. Run Logic
-        updateStatus("تنفيذ المفاضلة...");
-        const results = await runDistributionAlgorithm(teams, students);
-
-        // Check for duplicates
-        if (results.statistics.duplicateProjects && results.statistics.duplicateProjects.length > 0) {
-            alert(`🚨 خطأ: وجدت مشاريع مكررة!\n${results.statistics.duplicateProjects.join(', ')}`);
-            throw new Error("Distribution failed - duplicate projects detected");
-        }
-        console.table(results.statistics);
-
-        // 3. Save Results
-        updateStatus(`جاري حفظ ${results.assignments.length} توزيع...`);
-
-        const batch = writeBatch(db);
-
-        results.assignments.forEach(assignment => {
-            const teamRef = doc(db, "teams", assignment.teamId);
-            batch.update(teamRef, {
-                assignedProjectId: assignment.projectId,
-                calculatedMaxGPA: assignment.maxGPA,
-                assignedChoiceRank: assignment.choiceRank,
-                distributionDate: new Date()
-            });
-        });
-
-        await batch.commit();
-
-        document.body.removeChild(loadingDiv);
-        alert(`✅ تمت عملية التوزيع بنجاح!\nتم توزيع ${results.statistics.assignedCount} فريق حسب المعدل والرغبات.`);
-        loadDistributionPage();
-
-    } catch (error) {
-        console.error("Distribution Error:", error);
-        if (document.body.contains(loadingDiv)) document.body.removeChild(loadingDiv);
-        alert("❌ حدث خطأ أثناء التوزيع: " + error.message);
-    }
-};
-
-// ============ New Results Logic ============
-async function loadResultsPage() {
-    const contentArea = document.querySelector('.content-area');
-    contentArea.innerHTML = `
-        <div style="padding: 20px;">
-            <h2>🏆 النتائج النهائية للتوزيع</h2>
-            <div style="text-align: center; padding: 40px;">
-                <div style="border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
-                <p>جاري تحضير قائمة النتائج...</p>
-            </div>
-        </div>
-    `;
-
-    try {
-        const teamsSnapshot = await getDocs(collection(db, "teams"));
-        const projectsSnapshot = await getDocs(collection(db, "projects"));
-        const supervisorsSnapshot = await getDocs(collection(db, "supervisors"));
-
-        const projectsMap = {};
-        projectsSnapshot.forEach(d => projectsMap[d.id] = d.data());
-
-        const supervisorsMap = {};
-        supervisorsSnapshot.forEach(d => supervisorsMap[d.id] = d.data().fullName || d.data().name);
-
-        let html = `
-             <div style="padding: 20px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h2>🏆 النتائج النهائية</h2>
-                    <button onclick="window.print()" style="padding: 10px 20px; background: #4a5568; color: white; border: none; border-radius: 6px; cursor: pointer;">🖨️ طباعة النتائج</button>
-                </div>
-
-                <div class="table-container" style="background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow: hidden;">
-                    <table class="admin-table" style="width: 100%; border-collapse: collapse;">
-                        <thead>
-                            <tr style="background: #2d3748; color: white;">
-                                <th style="padding: 15px; text-align: center;">#</th>
-                                <th style="padding: 15px; text-align: right;">الفريق</th>
-                                <th style="padding: 15px; text-align: center;">أعلى معدل</th>
-                                <th style="padding: 15px; text-align: right;">المشروع المخصص</th>
-                                <th style="padding: 15px; text-align: right;">المشرف</th>
-                                <th style="padding: 15px; text-align: center;">الترتيب في الرغبات</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-        `;
-
-        let counter = 1;
-
-        // Convert to array and sort
-        const teamsList = [];
-        teamsSnapshot.forEach(doc => teamsList.push({ id: doc.id, ...doc.data() }));
-
-        // Sort by calculatedMaxGPA descending
-        teamsList.sort((a, b) => (b.calculatedMaxGPA || 0) - (a.calculatedMaxGPA || 0));
-
-        let assignedCount = 0;
-
-        teamsList.forEach(team => {
-            const assignedId = team.assignedProjectId;
-
-            if (assignedId && projectsMap[assignedId]) {
-                assignedCount++;
-                const project = projectsMap[assignedId];
-                const supervisorName = supervisorsMap[project.supervisorId] || 'غير محدد';
-                const maxGPA = team.calculatedMaxGPA ? team.calculatedMaxGPA.toFixed(2) : '-';
-
-                // Prefer stored rank, fallback to calculation
-                let choiceRank = team.assignedChoiceRank;
-                if (!choiceRank && team.selectedProjects) {
-                    const idx = team.selectedProjects.indexOf(assignedId);
-                    if (idx !== -1) choiceRank = idx + 1;
-                }
-                const rankDisplay = choiceRank ? choiceRank : '-';
-
-                html += `
-                    <tr style="border-bottom: 1px solid #edf2f7;">
-                        <td style="padding: 15px; text-align: center; color: #718096;">${counter++}</td>
-                        <td style="padding: 15px; font-weight: 600;">${team.name || team.id}</td>
-                        <td style="padding: 15px; text-align: center; font-weight: bold; color: #2b6cb0;">${maxGPA}</td>
-                        <td style="padding: 15px; color: #2c5282; font-weight: bold;">${project.title}</td>
-                        <td style="padding: 15px;">${supervisorName}</td>
-                        <td style="padding: 15px; text-align: center;">
-                            <span style="background: ${choiceRank === 1 ? '#c6f6d5' : '#bee3f8'}; color: ${choiceRank === 1 ? '#22543d' : '#2a4365'}; padding: 4px 10px; border-radius: 20px; font-size: 0.85em; font-weight: bold;">
-                                رغبة #${rankDisplay}
-                            </span>
-                        </td>
-                    </tr>
-                `;
-            }
-        });
-
-        if (assignedCount === 0) {
-            html += `<tr><td colspan="6" style="text-align: center; padding: 30px; color: #e53e3e;">لم يتم توزيع أي مشاريع بعد. يرجى الذهاب إلى صفحة التوزيع أولاً.</td></tr>`;
-        }
-
-        html += `
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        `;
-
-        contentArea.innerHTML = html;
-
-    } catch (error) {
-        console.error("Error loading results:", error);
-        contentArea.innerHTML = `<div style="padding: 20px; color: red;">❌ خطأ: ${error.message}</div>`;
-    }
-}

@@ -2,19 +2,19 @@
  * distribution-logic.js
  * GPA-Priority Stable Project Allocation Algorithm (GPSPA)
  * 
- * Based on SOP:
- * 1. Sort all groups by Max GPA (Descending).
- * 2. Iterate highest to lowest.
- * 3. Assign first available preference.
- * 4. No displacement allowed (Highest GPA locks the project).
+ * خوارزمية التوزيع بناءً على:
+ * 1. أعلى معدل في الفريق (Max GPA)
+ * 2. ترتيب الاختيارات (Preference Priority)
+ * 3. لا يُسمح بإعادة التخصيص (Stable Assignment)
+ * 4. عند التساوي في المعدل: الأولوية للأقدم تسجيلاً (createdAt)
  */
 
 export function runDistributionAlgorithm(teamsData, studentsData) {
     console.log("🚀 Starting GPSPA Algorithm...");
 
-    // ============ STEP 1: Data Preparation ============
+    // ============ STEP 1: إعداد البيانات ============
 
-    // Map students for O(1) access
+    // بناء خريطة الطلاب للوصول السريع O(1)
     const studentsMap = {};
     if (Array.isArray(studentsData)) {
         studentsData.forEach(s => studentsMap[s.id] = s);
@@ -22,12 +22,12 @@ export function runDistributionAlgorithm(teamsData, studentsData) {
         Object.assign(studentsMap, studentsData);
     }
 
-    // Helper to calculate Max GPA per team (Highest among members)
+    // دالة حساب أعلى معدل في الفريق
     const calculateMaxGPA = (team) => {
         let maxGPA = 0;
         const memberUIDs = team.memberUIDs || [];
 
-        // Fallback: search by teamCode if no UIDs (robustness)
+        // خطة احتياطية: البحث بواسطة teamCode
         if (memberUIDs.length === 0 && team.id) {
             Object.values(studentsMap).forEach(student => {
                 if (student.teamCode === team.id) {
@@ -36,6 +36,7 @@ export function runDistributionAlgorithm(teamsData, studentsData) {
                 }
             });
         } else {
+            // الطريقة الأساسية: استخدام memberUIDs
             memberUIDs.forEach(uid => {
                 const student = studentsMap[uid];
                 if (student) {
@@ -47,41 +48,50 @@ export function runDistributionAlgorithm(teamsData, studentsData) {
         return maxGPA;
     };
 
-    // Prepare Team Objects
+    // تحضير قائمة الفرق
     let teams = teamsData
         .filter(team => team.selectedProjects && team.selectedProjects.length > 0)
         .map(team => ({
             id: team.id,
             name: team.name || team.id,
             maxGPA: calculateMaxGPA(team),
+            createdAt: team.createdAt ? new Date(team.createdAt) : new Date(), // Ensure Date object
             choices: [...(team.selectedProjects || [])],
             assignedProjectId: null,
             assignedChoiceRank: null
         }));
 
-    // ============ STEP 2: Sort (Descending Max GPA) ============
-    // "Sort all groups Descending order by maxGPA"
-    teams.sort((a, b) => b.maxGPA - a.maxGPA);
+    console.log(`📊 Total teams: ${teams.length}`);
 
-    console.log(`📊 Teams Sorted. Count: ${teams.length}`);
+    // ============ STEP 2: الترتيب حسب المعدل (تنازلياً) ثم الأقدمية ============
+    // "Sort all groups in Descending order by maxGPA. Tie-breaker: createdAt Ascending (Oldest First)"
+    teams.sort((a, b) => {
+        const diffGPA = b.maxGPA - a.maxGPA;
+        if (diffGPA !== 0) return diffGPA;
+        // If GPA is equal, compare timestamps (earlier date = smaller value)
+        return a.createdAt - b.createdAt;
+    });
 
-    // ============ STEP 3: Allocation Loop (Greedy) ============
+    console.log("✅ Teams sorted by Max GPA (highest first) -> CreatedAt (oldest first)");
+
+    // ============ STEP 3: التخصيص (Greedy Allocation) ============
     // "For each group (highest GPA first): Assign the first available project"
 
     const assignedProjects = new Set();
     const assignments = [];
 
     for (const team of teams) {
-        // Try preferences in order
+        let projectAssigned = false;
+
+        // المرور على الاختيارات بالترتيب
         for (let i = 0; i < team.choices.length; i++) {
             const projectId = team.choices[i];
 
-            // Conflict Handling: "If a project is already assigned: The lower-GPA group must try its next preference"
+            // التحقق: هل المشروع متاح؟
             if (!assignedProjects.has(projectId)) {
-                // Success! Assign project
+                // ✅ المشروع متاح - قم بالتخصيص
                 team.assignedProjectId = projectId;
                 team.assignedChoiceRank = i + 1;
-
                 assignedProjects.add(projectId);
 
                 assignments.push({
@@ -92,21 +102,20 @@ export function runDistributionAlgorithm(teamsData, studentsData) {
                 });
 
                 console.log(`✅ Assigned ${projectId} to ${team.name} (GPA: ${team.maxGPA}, Choice: #${i + 1})`);
-                break; // Stop checking further preferences as we found one
-            } else {
-                // "No reassignment is allowed once a higher-GPA group is placed"
-                console.log(`🔒 Project ${projectId} busy. ${team.name} (GPA: ${team.maxGPA}) trying next...`);
+                projectAssigned = true;
+                break; // توقف عن البحث - تم التخصيص
             }
         }
 
-        if (!team.assignedProjectId) {
-            console.warn(`⚠️ Team ${team.name} (GPA: ${team.maxGPA}) could not be assigned any of their choices.`);
+        // إذا لم يحصل الفريق على أي مشروع
+        if (!projectAssigned) {
+            console.warn(`⚠️ Team ${team.name} (GPA: ${team.maxGPA}) could not be assigned (all choices taken)`);
         }
     }
 
-    // ============ STEP 4: Results & Validation ============
+    // ============ STEP 4: التحقق من النتائج ============
 
-    // Calculate Duplicates (Should be 0 by definition of Set logic)
+    // فحص التكرارات (يجب أن يكون صفر)
     const projectCounts = {};
     assignments.forEach(a => {
         projectCounts[a.projectId] = (projectCounts[a.projectId] || 0) + 1;
@@ -115,9 +124,12 @@ export function runDistributionAlgorithm(teamsData, studentsData) {
     const duplicateProjects = Object.keys(projectCounts).filter(id => projectCounts[id] > 1);
 
     if (duplicateProjects.length > 0) {
-        console.error("🚨 CRITICAL: Duplicates found in GPSPA result!", duplicateProjects);
+        console.error("🚨 CRITICAL ERROR: Duplicate projects detected!", duplicateProjects);
+    } else {
+        console.log("✅ No duplicate projects - Algorithm is correct!");
     }
 
+    // ============ STEP 5: إرجاع النتائج ============
     return {
         assignments: assignments,
         statistics: {
