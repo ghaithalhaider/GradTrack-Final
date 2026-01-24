@@ -278,8 +278,13 @@
                 </button>
                 <div class="dropdown-menu">
                     <a href="#" class="dropdown-item" onclick="window.adminApp.loadPage('projects')">مشاريع الأساتذة</a>
-                    <a href="#" class="dropdown-item" onclick="window.adminApp.loadPage('selections')">اختيارات
-                        الطلاب</a>
+                    <div style="border-top:1px solid #eee; margin:5px 0;"></div>
+                    <div style="padding: 5px 15px; font-weight:bold; color:var(--primary); background:#f8f9fa;">📋
+                        الاختيارات</div>
+                    <a href="#" class="dropdown-item" onclick="window.adminApp.loadPage('selections-morning')">اختيارات
+                        الصباحي</a>
+                    <a href="#" class="dropdown-item" onclick="window.adminApp.loadPage('selections-evening')">اختيارات
+                        المسائي</a>
                 </div>
             </div>
 
@@ -292,7 +297,15 @@
                 <div class="dropdown-menu">
                     <a href="#" class="dropdown-item" onclick="window.adminApp.loadPage('distribution')">توزيع
                         المشاريع</a>
-                    <a href="#" class="dropdown-item" onclick="window.adminApp.loadPage('results')">النتائج النهائية</a>
+                    <div style="border-top:1px solid #eee; margin:5px 0;"></div>
+                    <div style="padding: 5px 15px; font-weight:bold; color:var(--primary); background:#f8f9fa;">🏆
+                        النتائج</div>
+                    <a href="#" class="dropdown-item"
+                        onclick="window.adminApp.loadPage('results', { studyType: 'صباحية' })">النتائج النهائية -
+                        صباحية</a>
+                    <a href="#" class="dropdown-item"
+                        onclick="window.adminApp.loadPage('results', { studyType: 'مسائية' })">النتائج النهائية -
+                        مسائية</a>
                 </div>
             </div>
 
