@@ -1457,7 +1457,11 @@ window.adminApp.runDistributionAlgorithm = async function (filterType) {
         // Helper to get Project Title
         const getProjectTitle = (pid) => projectsMap[pid] ? projectsMap[pid].title : pid;
         const getProjectSupervisor = (pid) => projectsMap[pid] ? projectsMap[pid].supervisorName : 'غير محدد';
-        const getProjectSupervisorId = (pid) => projectsMap[pid] ? projectsMap[pid].supervisorUID : null;
+        // FIX: Check for 'supervisorId' (standard) OR 'supervisorUID' (legacy) to prevent undefined
+        const getProjectSupervisorId = (pid) => {
+            if (!projectsMap[pid]) return null;
+            return projectsMap[pid].supervisorId || projectsMap[pid].supervisorUID || null;
+        };
 
         // Apply assignments
         for (const assignment of result.assignments) {
@@ -1491,6 +1495,13 @@ window.adminApp.runDistributionAlgorithm = async function (filterType) {
             const team = teamsData.find(t => t.id === teamId);
             if (team && team.memberUIDs && team.memberUIDs.length > 0) {
                 for (const uid of team.memberUIDs) {
+                    // VALIDATION: Check if student actually exists in our fetched data
+                    const studentExists = studentsData.some(s => s.id === uid);
+                    if (!studentExists) {
+                        console.warn(`⚠️ Warning: Skipping project assignment for missing student ID: ${uid} in Team: ${teamId}`);
+                        continue;
+                    }
+
                     const studentRef = doc(db, "students", uid);
                     batch.update(studentRef, {
                         assignedProject: {

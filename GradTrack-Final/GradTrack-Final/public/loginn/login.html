@@ -75,9 +75,11 @@
                 const userCredential = await signInWithEmailAndPassword(auth, email, password);
                 const user = userCredential.user;
 
+                /* TEMPORARILY DISABLED FOR TESTING
                 if (!user.emailVerified) {
                     throw new Error("⚠️ يرجى تأكيد بريدك الإلكتروني أولاً.");
                 }
+                */
 
                 // Redirect
                 window.location.href = '../student/dashboard.html';

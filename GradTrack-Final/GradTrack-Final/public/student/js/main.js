@@ -101,11 +101,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Check email verification
+        /* TEMPORARILY DISABLED FOR TESTING
         if (!user.emailVerified) {
             alert('⚠️ يرجى تأكيد بريدك الإلكتروني أولاً');
             window.location.href = '../loginn/email-confirmation.html';
             return;
         }
+        */
 
         // User is authenticated and verified
         // Set current user ID for notifications
