@@ -190,11 +190,12 @@ window.supervisorApp = {
         break;
 
       case 'projects-current':
-        contentArea.innerHTML = `
-                    <div class="card">
-                        <h2>🚀 المشاريع الحالية</h2>
-                        <p>قائمة بجميع المشاريع الحالية (عملي ونظري)...</p>
-                    </div>`;
+        // Call the function from projects.js to load assigned students
+        if (window.loadCurrentProjects) {
+          window.loadCurrentProjects();
+        } else {
+          contentArea.innerHTML = `<div style="padding:20px; color:red;">❌ خطأ: الدالة غير موجودة</div>`;
+        }
         break;
 
       case 'add-task':

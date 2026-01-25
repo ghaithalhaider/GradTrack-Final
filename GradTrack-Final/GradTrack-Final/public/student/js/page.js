@@ -273,32 +273,118 @@ export function showDashboardHome() {
 let selectedAvailableProject = null;
 let selectedChosenProject = null;
 
-export function showCurrentProjectPage() {
+export async function showCurrentProjectPage() {
     const contentArea = document.querySelector('.content-area');
 
     contentArea.innerHTML = `
         <div class="current-project-container">
             <div class="page-header">
                 <h2>📊 مشروعي الحالي</h2>
-                <button class="edit-btn" onclick="window.dashboardApp.editProject()">✏️ تعديل</button>
             </div>
-            
-            <div class="project-name-card">
-                <div class="project-icon">🎯</div>
+            <div id="projectLoading" style="text-align:center; padding:40px;">
+                <div class="spinner" style="margin:0 auto;"></div>
+                <p>جاري تحميل بيانات المشروع...</p>
+            </div>
+            <div id="projectContent" style="display:none;"></div>
+        </div>
+    `;
+
+    try {
+        const user = auth.currentUser;
+        if (!user) {
+            contentArea.innerHTML = `<div style="padding:20px; color:red;">❌ يرجى تسجيل الدخول</div>`;
+            return;
+        }
+
+        const studentDoc = await getDoc(doc(db, "students", user.uid));
+        if (!studentDoc.exists()) {
+            contentArea.innerHTML = `<div style="padding:20px; color:red;">❌ بيانات الطالب غير موجودة</div>`;
+            return;
+        }
+
+        const studentData = studentDoc.data();
+
+        if (!studentData.assignedProject || !studentData.assignedProject.id) {
+            document.getElementById('projectLoading').style.display = 'none';
+            document.getElementById('projectContent').style.display = 'block';
+            document.getElementById('projectContent').innerHTML = `
+                <div style="background: white; border-radius: 15px; padding: 40px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+                    <div style="font-size: 4em; margin-bottom: 20px;">⏳</div>
+                    <h3 style="color: #333; margin: 10px 0;">لم يتم تخصيص مشروع لك بعد</h3>
+                    <p style="color: #666; font-size: 1.1em;">يرجى انتظار انتهاء عملية التوزيع من قبل الإدارة.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Project Assigned! Fetch details
+        const projectId = studentData.assignedProject.id;
+        const projectDoc = await getDoc(doc(db, "projects", projectId));
+        const projectData = projectDoc.exists() ? projectDoc.data() : { title: studentData.assignedProject.title, description: 'غير متوفر' };
+
+        // Fetch Team Members
+        let teamMembersHtml = '';
+        if (studentData.teamCode) {
+            const teamDoc = await getDoc(doc(db, "teams", studentData.teamCode));
+            if (teamDoc.exists()) {
+                const teamData = teamDoc.data();
+                if (teamData.memberUIDs) {
+                    // We need names. iterate
+                    for (const uid of teamData.memberUIDs) {
+                        // Optimize: check if we have data, or just fetch.
+                        // For simplicity, fetch is okay for small team
+                        const memDoc = await getDoc(doc(db, "students", uid));
+                        const memName = memDoc.exists() ? (memDoc.data().fullName || 'عضو') : 'عضو';
+                        teamMembersHtml += `<li style="margin-bottom:5px;">👤 ${memName}</li>`;
+                    }
+                }
+            }
+        }
+
+        document.getElementById('projectLoading').style.display = 'none';
+        const projectContent = document.getElementById('projectContent');
+        projectContent.style.display = 'block';
+
+        projectContent.innerHTML = `
+            <div class="project-name-card" style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white;">
+                <div class="project-icon" style="background:rgba(255,255,255,0.2);">🎯</div>
                 <div class="project-name-content">
-                    <h3>نظام إدارة المكتبات الجامعية</h3>
+                    <h3 style="color:white;">${projectData.title}</h3>
                     <div class="project-status">
-                        <span class="status-badge active">قيد التنفيذ</span>
-                        <span class="progress-text">التقدم: 65%</span>
+                         <span class="status-badge active" style="background:white; color:#667eea;">✅ تم الاعتماد</span>
                     </div>
                 </div>
             </div>
 
-            <div class="action-section">
-                <button class="action-btn primary" onclick="window.dashboardApp.goToTasks()">📋 عرض المهام</button>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:20px; margin-top:30px;">
+                
+                <!-- Supervisor Card -->
+                <div style="background:white; padding:25px; border-radius:15px; box-shadow:0 4px 15px rgba(0,0,0,0.05);">
+                    <h3 style="color:#333; border-bottom:2px solid #eee; padding-bottom:10px; margin-top:0;">👨‍🏫 المشرف</h3>
+                    <p style="font-size:1.2em; color:#2d3748; font-weight:bold;">${studentData.supervisorName || 'غير محدد'}</p>
+                    <p style="color:#718096; font-size:0.9em;">مشرف المشروع</p>
+                </div>
+
+                <!-- Team Card -->
+                <div style="background:white; padding:25px; border-radius:15px; box-shadow:0 4px 15px rgba(0,0,0,0.05);">
+                    <h3 style="color:#333; border-bottom:2px solid #eee; padding-bottom:10px; margin-top:0;">👥 فريق العمل</h3>
+                    <ul style="list-style:none; padding:0; color:#4a5568;">
+                        ${teamMembersHtml}
+                    </ul>
+                </div>
+
+                <!-- Description Card -->
+                <div style="background:white; padding:25px; border-radius:15px; box-shadow:0 4px 15px rgba(0,0,0,0.05); grid-column: 1 / -1;">
+                    <h3 style="color:#333; border-bottom:2px solid #eee; padding-bottom:10px; margin-top:0;">📝 وصف المشروع</h3>
+                    <p style="color:#4a5568; line-height:1.6;">${projectData.description}</p>
+                </div>
             </div>
-        </div>
-    `;
+        `;
+
+    } catch (error) {
+        console.error("Error loading current project:", error);
+        contentArea.innerHTML = `<div style="padding:20px; color:red;">❌ حدث خطأ: ${error.message}</div>`;
+    }
 }
 
 export async function showProjectSelectionPage() {

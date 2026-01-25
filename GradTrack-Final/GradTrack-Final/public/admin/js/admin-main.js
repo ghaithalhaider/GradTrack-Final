@@ -1449,14 +1449,82 @@ window.adminApp.runDistributionAlgorithm = async function (filterType) {
         const batch = writeBatch(db);
         let updatesCount = 0;
 
+        // Fetch Projects Map for Titles
+        const projectsSnapshot = await getDocs(collection(db, "projects"));
+        const projectsMap = {};
+        projectsSnapshot.forEach(d => projectsMap[d.id] = d.data());
+
+        // Helper to get Project Title
+        const getProjectTitle = (pid) => projectsMap[pid] ? projectsMap[pid].title : pid;
+        const getProjectSupervisor = (pid) => projectsMap[pid] ? projectsMap[pid].supervisorName : 'غير محدد';
+        const getProjectSupervisorId = (pid) => projectsMap[pid] ? projectsMap[pid].supervisorUID : null;
+
         // Apply assignments
         for (const assignment of result.assignments) {
-            const teamRef = doc(db, "teams", assignment.teamId);
+            const teamId = assignment.teamId;
+            const projectId = assignment.projectId;
+            const projectTitle = getProjectTitle(projectId);
+            const supervisorName = getProjectSupervisor(projectId);
+            const supervisorId = getProjectSupervisorId(projectId);
+
+            // A. Update Team
+            const teamRef = doc(db, "teams", teamId);
             batch.update(teamRef, {
-                assignedProjectId: assignment.projectId,
+                assignedProjectId: projectId,
+                assignedProjectTitle: projectTitle, // useful cache
                 assignedDate: new Date(),
                 assignedChoiceRank: assignment.choiceRank
             });
+
+            // B. Update Project (Mark as Taken)
+            const projectRef = doc(db, "projects", projectId);
+            const teamObj = teamsData.find(t => t.id === teamId);
+            batch.update(projectRef, {
+                assignedTeamCode: teamId,
+                assignedTeamName: teamObj ? (teamObj.name || teamId) : teamId,
+                status: 'assigned'
+            });
+
+            // C. Update Students (Members)
+            // We need to find members. 
+            // Strategy: Use the `memberUIDs` from the team object we fetched earlier
+            const team = teamsData.find(t => t.id === teamId);
+            if (team && team.memberUIDs && team.memberUIDs.length > 0) {
+                for (const uid of team.memberUIDs) {
+                    const studentRef = doc(db, "students", uid);
+                    batch.update(studentRef, {
+                        assignedProject: {
+                            id: projectId,
+                            title: projectTitle
+                        },
+                        supervisorName: supervisorName,
+                        supervisorId: supervisorId
+                    });
+
+                    // D. Notification for Student
+                    const notifRef = doc(collection(db, 'notifications'));
+                    batch.set(notifRef, {
+                        userId: uid,
+                        message: "🔔 تم إعلان نتائج مفاضلة المشاريع. يمكنك الآن رؤية مشروعك والمشرف في صفحة (مشروعي الحالي).",
+                        type: 'success',
+                        timestamp: new Date().getTime(),
+                        read: false
+                    });
+                }
+            }
+
+            // E. Notification for Supervisor
+            if (supervisorId) {
+                const notifRefSup = doc(collection(db, 'notifications'));
+                batch.set(notifRefSup, {
+                    userId: supervisorId,
+                    message: "🔔 تم توزيع الطلبة على مشاريعك. تفقد قائمة (المشاريع الحالية) لرؤية قائمة طلاب الصباحي/المسائي الجدد.",
+                    type: 'info',
+                    timestamp: new Date().getTime(),
+                    read: false
+                });
+            }
+
             updatesCount++;
         }
 

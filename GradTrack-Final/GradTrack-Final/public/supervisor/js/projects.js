@@ -529,6 +529,121 @@ async function deleteProject(projectId) {
     }
 }
 
+// Load Current Projects (Assigned Students)
+export async function loadCurrentProjects() {
+    const container = document.querySelector('.content-area');
+    container.innerHTML = `
+        <div class="projects-management-container">
+             <div class="page-header">
+                <h2>🚀 المشاريع الحالية (الطلاب الموزعين)</h2>
+                <p>قائمة بالطلاب والفرق التي تشرف عليها حالياً</p>
+            </div>
+            <div id="currentProjectsLoading" style="text-align:center; padding:40px;">
+                <div class="spinner" style="margin:0 auto;"></div>
+                <p>جاري تحميل بيانات الطلاب...</p>
+            </div>
+            <div id="currentProjectsContent" style="display:none;"></div>
+        </div>
+    `;
+
+    try {
+        if (!currentSupervisorUID) {
+            container.innerHTML = `<div style="padding:20px; color:red;">❌ يرجى تسجيل الدخول</div>`;
+            return;
+        }
+
+        // Query students assigned to this supervisor
+        // Note: We need an index on supervisorId usually. If not exists, might fail? 
+        // fallback: fetch all students and filter client side if index issue (safer for now).
+        // Let's try query first. If error, catch and fallback? 
+        // Actually, fetching all students is heavy. Query is better. 
+        // Assume index exists or create one.
+        // "students" collection usually small enough < 1000 for client filter if needed.
+        // Let's use Query.
+
+        const q = query(
+            collection(db, "students"),
+            where("supervisorId", "==", currentSupervisorUID)
+        );
+
+        const snapshot = await getDocs(q);
+
+        const students = [];
+        snapshot.forEach(doc => {
+            students.push({ id: doc.id, ...doc.data() });
+        });
+
+        // Group by Study Type
+        const morningStudents = students.filter(s => (s.studyType || '').includes('صباح') || (s.studyType || '') === 'morning');
+        const eveningStudents = students.filter(s => (s.studyType || '').includes('مسائ') || (s.studyType || '') === 'evening');
+        // Fallback for undefined
+        const others = students.filter(s => !morningStudents.includes(s) && !eveningStudents.includes(s));
+        if (others.length > 0) morningStudents.push(...others); // Default to morning
+
+        const renderSection = (title, list, colorClass) => {
+            if (list.length === 0) return '';
+
+            // Group by Project
+            const projectsMap = {};
+            list.forEach(s => {
+                const pTitle = s.assignedProject ? s.assignedProject.title : 'مشروع غير محدد';
+                if (!projectsMap[pTitle]) projectsMap[pTitle] = [];
+                projectsMap[pTitle].push(s);
+            });
+
+            let html = `<div class="study-section ${colorClass}" style="margin-bottom:30px;">
+                <h3 style="border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom:20px;">${title} (${list.length} طالب)</h3>`;
+
+            for (const [pTitle, members] of Object.entries(projectsMap)) {
+                html += `
+                    <div class="assigned-project-card" style="background:white; border-radius:10px; padding:20px; margin-bottom:15px; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                        <div style="font-weight:bold; font-size:1.1em; color:#2d3748; margin-bottom:10px;">📂 ${pTitle}</div>
+                        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:10px;">
+                 `;
+
+                members.forEach(m => {
+                    html += `
+                        <div style="display:flex; align-items:center; background:#f7fafc; padding:8px; border-radius:6px;">
+                            <span style="margin-left:8px;">👤</span>
+                            <div>
+                                <div style="font-weight:600; font-size:0.9em;">${m.fullName || m.username}</div>
+                                <div style="font-size:0.8em; color:#718096;">${m.email}</div>
+                            </div>
+                        </div>
+                     `;
+                });
+
+                html += `</div></div>`;
+            }
+            html += `</div>`;
+            return html;
+        };
+
+        const contentDiv = document.getElementById('currentProjectsContent');
+
+        if (students.length === 0) {
+            contentDiv.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">👥</div>
+                    <p>لم يتم تعيين أي طلاب لك حتى الآن</p>
+                </div>
+            `;
+        } else {
+            contentDiv.innerHTML = `
+                ${renderSection('☀️ الدراسات الصباحية', morningStudents, 'morning-section')}
+                ${renderSection('🌙 الدراسات المسائية', eveningStudents, 'evening-section')}
+            `;
+        }
+
+        document.getElementById('currentProjectsLoading').style.display = 'none';
+        contentDiv.style.display = 'block';
+
+    } catch (error) {
+        console.error("Error loading current projects:", error);
+        container.innerHTML = `<div style="padding:20px; color:red;">❌ حدث خطأ: ${error.message}</div>`;
+    }
+}
+
 // Export functions to window as per SOP requirement
 window.showProjectForm = showProjectForm;
 window.closeProjectModal = closeProjectModal;
@@ -536,3 +651,4 @@ window.addProject = addProject;
 window.publishAllProjects = publishAllProjects;
 window.editProject = editProject;
 window.deleteProject = deleteProject;
+window.loadCurrentProjects = loadCurrentProjects; // New Export
