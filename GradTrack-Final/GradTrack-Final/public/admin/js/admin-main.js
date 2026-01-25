@@ -10,7 +10,7 @@ window.toggleMenu = function (button) {
     const dropdown = button.nextElementSibling;
     const parent = button.parentElement;
 
-    // Close other dropdowns
+    // 1234567Close other dropdowns
     document.querySelectorAll('.nav-item').forEach(item => {
         if (item !== parent) item.classList.remove('active');
     });
