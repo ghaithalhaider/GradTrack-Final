@@ -8,7 +8,7 @@
  * 3. For each group:
  *    - Check preferences in order (1st -> 2nd -> 3rd).
  *    - Assign first available project.
- *    - Stop once assigned.
+ *    - Stop onc assigned.
  * 4. Ensure NO reassignment (Locked upon assignment).
  */
 

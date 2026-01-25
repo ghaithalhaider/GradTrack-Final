@@ -1373,13 +1373,22 @@ async function loadDistributionPage() {
                         </p>
                     </div>
                     
-                    <button onclick="window.adminApp.runDistributionAlgorithm()" 
-                        style="padding: 15px 40px; font-size: 1.1em; font-weight: bold; color: white; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); transition: transform 0.2s;">
-                        🚀 تنفيذ التوزيع الشامل
-                    </button>
+
                     
-                     <div style="margin-top: 20px;">
-                        <button onclick="if(confirm('هل أنت متأكد؟ سيتم حذف جميع التوزيعات الحالية!')) window.adminApp.resetDistribution()" 
+                    <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px;">
+                        <!-- Morning Button -->
+                        <button onclick="window.adminApp.runDistributionAlgorithm('صباحية')" style="padding: 15px 30px; font-size: 1.1em; font-weight: bold; color: white; background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 15px rgba(72, 187, 120, 0.4); transition: transform 0.2s;">
+                            ☀️ تنفيذ توزيع الصباحي
+                        </button>
+
+                        <!-- Evening Button -->
+                        <button onclick="window.adminApp.runDistributionAlgorithm('مسائية')" style="padding: 15px 30px; font-size: 1.1em; font-weight: bold; color: white; background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%); border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 15px rgba(66, 153, 225, 0.4); transition: transform 0.2s;">
+                            🌙 تنفيذ توزيع المسائي
+                        </button>
+                    </div>
+
+                    <div style="text-align:center; padding-top:20px; border-top:1px solid #eee;">
+                        <button onclick="if(confirm('هل أنت متأكد؟ سيتم حذف جميع النتائج الحالية!')) window.adminApp.resetDistribution()" 
                             style="padding: 10px 20px; font-size: 0.9em; color: #e53e3e; background: none; border: 2px solid #e53e3e; border-radius: 50px; cursor: pointer; transition: all 0.2s;">
                             🔄 إعادة تعيين التوزيع
                         </button>
@@ -1395,8 +1404,15 @@ async function loadDistributionPage() {
 }
 
 // Run Distribution Algorithm
-window.adminApp.runDistributionAlgorithm = async function () {
-    if (!confirm("هل أنت متأكد من بدء عملية التوزيع؟ سيتم تحديث مشاريع الفرق.")) return;
+window.adminApp.runDistributionAlgorithm = async function (filterType) {
+    // Validate Input
+    if (!filterType || (filterType !== 'صباحية' && filterType !== 'مسائية')) {
+        alert("خطأ: نوع الدراسة غير محدد (صباحية/مسائية)");
+        return;
+    }
+
+    const typeLabel = filterType === 'صباحية' ? 'الصباحية' : 'المسائية';
+    if (!confirm(`هل أنت متأكد من بدء عملية التوزيع للدراسة ${typeLabel}؟\nسيتم توزيع المشاريع على الفرق ${typeLabel} فقط.`)) return;
 
     const loadingDiv = document.createElement('div');
     loadingDiv.id = 'distLoading';
@@ -1423,9 +1439,9 @@ window.adminApp.runDistributionAlgorithm = async function () {
         studentsSnapshot.forEach(doc => studentsData.push({ id: doc.id, ...doc.data() }));
 
         // 2. Run Algorithm
-        updateStatus("تنفيذ خوارزمية التوزيع...");
-        // Call the imported, pure-logic function
-        const result = runDistributionAlgorithm(teamsData, studentsData);
+        updateStatus(`تنفيذ خوارزمية التوزيع (${typeLabel})...`);
+        // Call the imported, pure-logic function with filterType
+        const result = runDistributionAlgorithm(teamsData, studentsData, filterType);
 
         // 3. Save Results
         updateStatus(`جاري حفظ ${result.assignments.length} توزيع...`);
