@@ -293,30 +293,34 @@ window.generateTeams = async () => {
             const teamCode = `TEAM_${Date.now()}_${i}`;
             const teamName = `فريق ${generateName().split(' ')[0]} ${Math.floor(Math.random() * 100)}`; // Random name
 
-            const teamRef = doc(collection(db, "teams"));
+            const teamRef = doc(collection(db, "teams"), teamCode); // Use teamCode as Doc ID
             const memberUIDs = teamMembers.map(s => s.id);
-            const memberNames = teamMembers.map(s => s.name);
+            const memberNames = teamMembers.map(s => s.fullName); // Use fullName
 
             // Using batch for atomic team+members update
             const batch = writeBatch(db);
 
             // Create Team Doc
             batch.set(teamRef, {
-                id: teamRef.id,
-                name: teamName,
-                code: teamCode,
+                teamCode: teamCode,
+                teamName: teamName,
                 memberUIDs: memberUIDs,
+                memberUsernames: memberNames, // Store names too
                 studyType: studyType,
-                createdAt: new Date().toISOString(),
-                status: 'pending' // pending project assignment
+                createdAt: serverTimestamp(),
+                assignedProjectID: null, // Initial State
+                status: 'pending',
+                leaderUID: memberUIDs[0], // Assign first as leader
+                selectedProjects: []
             });
 
             // Update Members
-            teamMembers.forEach(s => {
+            teamMembers.forEach((s, index) => {
                 const sRef = doc(db, "students", s.id);
                 batch.update(sRef, {
-                    teamCode: teamRef.id, // Linking via ID as 'teamCode' commonly used in this logic
-                    teamId: teamRef.id
+                    teamCode: teamCode,
+                    teamName: teamName,
+                    isLeader: index === 0
                 });
             });
 
@@ -358,9 +362,8 @@ window.generateSelections = async () => {
         projSnap.forEach(d => availableProjects.push({ id: d.id, ...d.data() }));
 
         if (availableProjects.length < 3) {
-            log(`⚠️ عدد المشاريع المتاحة قليل جداً (${availableProjects.length}). لا يمكن توليد رغبات متنوعة.`, 'warning');
-            setLoading(false);
-            return;
+            // Allow if at least 1 exist used for testing, but warn
+            log(`⚠️ عدد المشاريع المتاحة قليل جداً (${availableProjects.length}).`, 'warning');
         }
 
         // 2. Fetch Teams
@@ -383,25 +386,24 @@ window.generateSelections = async () => {
         let updatedCount = 0;
 
         for (const team of targetTeams) {
+            if (availableProjects.length === 0) break;
+
             // Pick 3 random distinct projects
-            // Shuffle a copy of available projects
             const shuffled = [...availableProjects].sort(() => Math.random() - 0.5);
             const selections = shuffled.slice(0, 3).map(p => p.id);
             const selectionTitles = shuffled.slice(0, 3).map(p => p.title);
 
             const batch = writeBatch(db);
 
-            // Update Team with selectedProjects
-            // Note: We do NOT assign virtual assignment here. Only preferences.
             batch.update(doc(db, "teams", team.id), {
                 selectedProjects: selections,
-                lastUpdated: new Date().toISOString()
+                lastUpdated: serverTimestamp()
             });
 
             await batch.commit();
             updatedCount++;
 
-            log(`📝 ${team.name} اختار: ${selectionTitles.join(' | ')}`);
+            log(`📝 ${team.teamName} اختار: ${selectionTitles.join(' | ')}`);
             await delay(100);
         }
 
