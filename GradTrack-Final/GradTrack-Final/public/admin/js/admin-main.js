@@ -67,6 +67,9 @@ window.adminApp = {
             case 'results-evening': // Keep for backward compatibility
                 loadResultsPage('evening');
                 break;
+            case 'professors-management':
+                loadProfessorsManagementPage();
+                break;
             default:
                 showDashboardHome();
         }
@@ -1754,3 +1757,139 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('logoutBtn').onclick = () => window.adminApp.logout();
     });
 });
+
+// --- Professors Management ---
+async function loadProfessorsManagementPage() {
+    const contentArea = document.querySelector('.content-area');
+
+    contentArea.innerHTML = `
+        <div style="padding: 20px;">
+            <h2>👨‍🏫 إدارة الأساتذة (Professor Tokens)</h2>
+            
+            <!-- Generate Tokens Section -->
+            <div style="background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 30px; margin-top:20px;">
+                <h3 style="margin-bottom: 20px; color: #2d3748;">🔑 توليد أكواد انضمام جديدة</h3>
+                <div style="display: flex; gap: 15px; align-items: flex-end;">
+                    <div style="flex: 1; max-width: 300px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #4a5568;">عدد الأكواد المطلوبة:</label>
+                        <input type="number" id="tokenCount" value="1" min="1" max="50" 
+                            style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1.1em;">
+                    </div>
+                    <button onclick="window.adminApp.generateProfessorTokens()" 
+                        style="padding: 12px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; height: 50px;">
+                        ⚡ توليد الأكواد
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tokens Table -->
+            <div class="table-container" style="background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow: hidden;">
+                <div style="padding: 20px; border-bottom: 1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="margin: 0; color: #2d3748;">📋 سجل الأكواد</h3>
+                    <button onclick="window.adminApp.loadProfessorsManagementPage()" style="background:none; border:none; cursor:pointer; color:#667eea; font-weight:bold;">🔄 تحديث</button>
+                </div>
+                <table class="admin-table" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f8f9fa; border-bottom: 2px solid #eee;">
+                            <th style="padding: 15px; text-align: center; color: #4a5568; width: 60px;">#</th>
+                            <th style="padding: 15px; text-align: center; color: #4a5568;">الكود (Token)</th>
+                            <th style="padding: 15px; text-align: center; color: #4a5568;">الحالة</th>
+                            <th style="padding: 15px; text-align: right; color: #4a5568;">المستخدم (الأستاذ)</th>
+                            <th style="padding: 15px; text-align: center; color: #4a5568;">تاريخ التوليد/الاستخدام</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tokensTableBody">
+                        <tr><td colspan="5" style="text-align: center; padding: 30px;">جاري تحميل البيانات...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+
+    // Load Data
+    try {
+        const snapshot = await getDocs(collection(db, "professorTokens"));
+
+        let tokens = [];
+        snapshot.forEach(doc => tokens.push({ id: doc.id, ...doc.data() }));
+
+        // Sort descending by creation
+        tokens.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        const tbody = document.getElementById('tokensTableBody');
+        if (tokens.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 30px; color: #718096;">لا توجد أكواد مولدة بعد.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = tokens.map((t, index) => {
+            const isUsed = t.status === 'used';
+            const statusBadge = isUsed
+                ? `<span style="background:#def7ec; color:#03543f; padding:4px 10px; border-radius:20px; font-weight:bold; font-size:0.9em;">✅ مستخدم</span>`
+                : `<span style="background:#fff5f5; color:#c53030; padding:4px 10px; border-radius:20px; font-weight:bold; font-size:0.9em;">🔴 نشط (متاح)</span>`;
+
+            const userInfo = isUsed
+                ? `<div style="font-weight:bold; color:#2d3748;">${t.usedByName || '---'}</div><div style="font-size:0.85em; color:#718096;">${t.usedByEmail || '---'}</div>`
+                : `<span style="color:#a0aec0;">---</span>`;
+
+            return `
+                <tr style="border-bottom: 1px solid #edf2f7; background: ${isUsed ? '#fafafa' : 'white'};">
+                    <td style="padding: 15px; text-align: center; color: #718096;">${index + 1}</td>
+                    <td style="padding: 15px; text-align: center; font-family: monospace; font-weight: bold; font-size: 1.1em; letter-spacing: 1px; color:#553c9a;">${t.token}</td>
+                    <td style="padding: 15px; text-align: center;">${statusBadge}</td>
+                    <td style="padding: 15px; text-align: right;">${userInfo}</td>
+                    <td style="padding: 15px; text-align: center; color: #718096; direction:ltr; font-size:0.9em;">
+                        ${isUsed ? new Date(t.usedAt).toLocaleString('ar-EG') : new Date(t.createdAt).toLocaleString('ar-EG')}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+    } catch (error) {
+        console.error("Error loading tokens:", error);
+        document.getElementById('tokensTableBody').innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 20px; color: red;">❌ خطأ في تحميل البيانات: ${error.message}</td></tr>`;
+    }
+}
+
+// Generate Tokens
+window.adminApp.generateProfessorTokens = async () => {
+    const count = parseInt(document.getElementById('tokenCount').value);
+    if (!count || count < 1) return alert("العدد غير صحيح");
+
+    // UI Loading state
+    const btn = document.querySelector('button[onclick*="generateProfessorTokens"]');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '⏳ جاري التوليد...';
+    btn.disabled = true;
+
+    try {
+        const batch = writeBatch(db);
+
+        for (let i = 0; i < count; i++) {
+            const token = `PROF-${Math.random().toString(36).substr(2, 6).toUpperCase()}-${Math.floor(Math.random() * 100)}`;
+            const docRef = doc(collection(db, "professorTokens"));
+            batch.set(docRef, {
+                token: token,
+                status: 'active',
+                createdAt: new Date().toISOString(),
+                usedBy: null,
+                usedByName: null,
+                usedByEmail: null,
+                usedAt: null
+            });
+        }
+
+        await batch.commit();
+        alert(`✅ تم توليد ${count} كود بنجاح!`);
+        loadProfessorsManagementPage(); // Reload table
+
+    } catch (error) {
+        console.error("Error generating tokens:", error);
+        alert("❌ حدث خطأ أثناء التوليد: " + error.message);
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+};
+
+window.adminApp.loadProfessorsManagementPage = loadProfessorsManagementPage;
