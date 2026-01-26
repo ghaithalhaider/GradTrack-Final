@@ -10,7 +10,8 @@ import {
     deleteDoc,
     query,
     where,
-    writeBatch
+    writeBatch,
+    serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
 
 // --- Consts & Helpers ---
@@ -145,15 +146,19 @@ window.generateStudents = async (e) => {
             // 2. Create Firestore Document
             await setDoc(doc(db, "students", user.uid), {
                 uid: user.uid,
-                name: name,
+                fullName: name,
                 email: email,
-                department: dept,
+                department: "حاسوب ", // Note the space
                 studyType: studyType,
                 gpa: parseFloat(gpa),
                 university: UNIVERSITY,
-                college: COLLEGE,
-                role: "student",
-                createdAt: new Date().toISOString()
+                college: "علوم",
+                // role field removed
+                assignedProjectID: null,
+                isLeader: true,
+                teamName: null,
+                teamCode: null,
+                createdAt: serverTimestamp()
             });
 
             log(`✅ تم إنشاء الطالب: ${name} (${gpa})`, 'success');
@@ -484,3 +489,5 @@ document.addEventListener('DOMContentLoaded', () => {
     const studentForm = document.getElementById('studentGenForm');
     if (studentForm) studentForm.addEventListener('submit', window.generateStudents);
 });
+
+//نسخة 6 بارت 02
