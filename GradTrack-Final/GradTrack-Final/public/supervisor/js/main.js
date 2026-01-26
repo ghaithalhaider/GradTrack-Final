@@ -238,6 +238,158 @@ window.supervisorApp = {
     });
   },
 
+  loadMyTeamsForSelect: async () => {
+    const select = document.getElementById('teamSelect');
+    if (!select || !window.supervisorApp.currentUser) return;
+
+    // Debug Logging
+    const currentUid = window.supervisorApp.currentUser.uid;
+    console.log("🔍 Loading teams for Supervisor UID:", currentUid);
+
+    try {
+      select.innerHTML = '<option value="">-- اختر الفريق --</option>';
+
+      // Step 1: Get Projects for this Supervisor
+      const projectsQuery = query(collection(db, "projects"), where("supervisorUID", "==", currentUid));
+      const projectsSnap = await getDocs(projectsQuery);
+
+      const projectIDs = [];
+      const projectMap = {};
+
+      projectsSnap.forEach(p => {
+        const data = p.data();
+        projectIDs.push(p.id);
+        projectMap[p.id] = data.title || "مشروع";
+      });
+
+      console.log("📂 Found Projects:", projectsSnap.size);
+      console.log("🔗 Found Project IDs:", projectIDs);
+
+      // Step 2: Fetch Teams linked to these projects
+      let teamsSnapStub = [];
+
+      if (projectIDs.length > 0) {
+        // Chunking for 'in' query limit (10)
+        const chunks = [];
+        for (let i = 0; i < projectIDs.length; i += 10) {
+          chunks.push(projectIDs.slice(i, i + 10));
+        }
+
+        for (const chunk of chunks) {
+          // FIX: Search by 'assignedProjectID' (capital ID)
+          const q = query(collection(db, "teams"), where("assignedProjectID", "in", chunk));
+          const snap = await getDocs(q);
+          snap.forEach(d => teamsSnapStub.push(d));
+        }
+      } else {
+        console.log("⚠️ No projects found for this supervisor.");
+      }
+
+      console.log("👥 Total Teams Found:", teamsSnapStub.length);
+
+      if (teamsSnapStub.length === 0) {
+        select.innerHTML += '<option disabled>لا توجد فرق مرتبطة بمشاريعك</option>';
+
+        // Auto-run migration/standardization if no teams found but projects exist
+        if (projectIDs.length > 0) {
+          console.log("🛠️ No teams found. Attempting to standardize data structure...");
+          window.supervisorApp.standardizeTeams(); // Auto-call
+        }
+        return;
+      }
+
+      // Filter duplicates just in case
+      const processedIds = new Set();
+
+      teamsSnapStub.forEach(docSnap => {
+        if (processedIds.has(docSnap.id)) return;
+        processedIds.add(docSnap.id);
+
+        const team = docSnap.data();
+        // FIX: Use 'teamName'
+        const teamName = team.teamName || team.name || 'فريق بدون اسم';
+        const projectTitle = projectMap[team.assignedProjectID] || "مشروع";
+
+        // FIX: Display format [Project Name] - [Team Name]
+        select.innerHTML += `<option value="${docSnap.id}">[${projectTitle}] - [${teamName}]</option>`;
+      });
+
+    } catch (error) {
+      console.error("❌ Error loading teams:", error);
+      select.innerHTML = '<option disabled>خطأ في التحميل</option>';
+    }
+  },
+
+  // 🛠️ Standardization & Proof Script
+  standardizeTeams: async () => {
+    console.log("🛡️ Starting Data Standardization Protocol (SOP)...");
+    try {
+      const q = query(collection(db, "teams"));
+      const snap = await getDocs(q);
+      let updatedCount = 0;
+
+      await runTransaction(db, async (transaction) => {
+        snap.forEach((docSnap) => {
+          const data = docSnap.data();
+          const ref = doc(db, "teams", docSnap.id);
+          let updates = {};
+
+          // 1. Map name -> teamName
+          if (!data.teamName && data.name) {
+            updates.teamName = data.name;
+          }
+
+          // 2. Map code -> teamCode
+          if (!data.teamCode && data.code) {
+            updates.teamCode = data.code;
+          }
+
+          // 3. Convert Dates to Timestamp
+          if (typeof data.createdAt === 'string') {
+            updates.createdAt = serverTimestamp();
+          }
+
+          // 4. Ensure assignedProjectID format
+          if (data.assignedProjectId && !data.assignedProjectID) {
+            updates.assignedProjectID = data.assignedProjectId;
+          }
+
+          if (Object.keys(updates).length > 0) {
+            transaction.update(ref, updates);
+            updatedCount++;
+          }
+        });
+      });
+
+      console.log(`✅ Standardization Complete. Updated ${updatedCount} documents.`);
+
+      // PROOF: Fetch one random document to show structure
+      if (!snap.empty) {
+        const randomDoc = snap.docs[0];
+        const freshSnap = await getDoc(doc(db, "teams", randomDoc.id));
+        const freshData = freshSnap.data();
+
+        console.log("🧾 PROOF OF DATA STRUCTURE (Sample Document):");
+        console.log("--------------------------------------------------");
+        console.log(`🆔 Doc ID: ${freshSnap.id}`);
+        console.log(`📛 teamName: ${freshData.teamName} ${freshData.name ? '(Old name exists)' : '(Clean)'}`);
+        console.log(`🔢 teamCode: ${freshData.teamCode} ${freshData.code ? '(Old code exists)' : '(Clean)'}`);
+        console.log(`📅 createdAt:`, freshData.createdAt); // Should be object if Timestamp
+        console.log(`🔗 assignedProjectID: ${freshData.assignedProjectID}`);
+        console.log("--------------------------------------------------");
+      }
+
+      if (updatedCount > 0) {
+        setTimeout(() => {
+          if (window.supervisorApp.loadMyTeamsForSelect) window.supervisorApp.loadMyTeamsForSelect();
+        }, 1000);
+      }
+
+    } catch (e) {
+      console.error("Standardization Failed:", e);
+    }
+  },
+
   logout: () => {
     auth.signOut().then(() => {
       window.location.href = '../loginn/supervisor-login.html';
