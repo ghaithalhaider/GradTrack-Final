@@ -311,7 +311,14 @@ window.generateTeams = async () => {
                 assignedProjectID: null, // Initial State
                 status: 'pending',
                 leaderUID: memberUIDs[0], // Assign first as leader
+<<<<<<< Updated upstream
                 selectedProjects: []
+=======
+                selectedProjects: [],
+                theoryProgress: 0,
+                practicalProgress: 0,
+                totalProgress: 0
+>>>>>>> Stashed changes
             });
 
             // Update Members

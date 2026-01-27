@@ -1,9 +1,9 @@
 import { auth, db } from '../../student/js/firebase-config.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getDoc, doc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getDoc, updateDoc, doc, collection, query, where, getDocs, setDoc, runTransaction, serverTimestamp, limit } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { initProjects, setCurrentUserId, loadNotificationsFromFirebase, setupNotificationListener, toggleNotifications, clearAllNotifications, removeNotificationExport, markNotificationAsRead } from './projects.js';
 
-// HTML Template for Projects Management (Inlined to avoid Fetch/CORS issues)
+// HTML Template for Projects Management
 const PROJECTS_PAGE_HTML = `
 <!-- Projects Management Container -->
 <div class="projects-management-container">
@@ -24,7 +24,6 @@ const PROJECTS_PAGE_HTML = `
         </div>
 
         <!-- Add New Project Button -->
-        <!-- Calls global showProjectForm() from projects.js -->
         <button class="btn btn-add-project" onclick="showProjectForm()">
             ➕ إضافة مشروع جديد
         </button>
@@ -42,11 +41,9 @@ const PROJECTS_PAGE_HTML = `
     <div class="modal-content">
         <div class="modal-header">
             <h3>➕ إضافة مشروع جديد</h3>
-            <!-- Calls global closeProjectModal() -->
             <button class="close-btn" onclick="closeProjectModal()">✖</button>
         </div>
 
-        <!-- Calls global addProject(event) -->
         <form id="addProjectForm" onsubmit="addProject(event)">
 
             <div class="form-group">
@@ -105,7 +102,6 @@ window.supervisorApp = {
     console.log("Loading Supervisor page:", pageName);
     const contentArea = document.querySelector('.content-area');
 
-    // Handle "Add Project" link click - map to projects management
     if (pageName === 'add-project') {
       pageName = 'projects-management';
     }
@@ -166,7 +162,6 @@ window.supervisorApp = {
               if (loader) loader.style.display = 'none';
             }
           } else {
-            // Retry once after short delay if auth is initializing
             console.log("Waiting for auth...");
             setTimeout(async () => {
               if (window.supervisorApp.currentUser) {
@@ -190,7 +185,6 @@ window.supervisorApp = {
         break;
 
       case 'projects-current':
-        // Call the function from projects.js to load assigned students
         if (window.loadCurrentProjects) {
           window.loadCurrentProjects();
         } else {
@@ -200,39 +194,127 @@ window.supervisorApp = {
 
       case 'add-task':
         contentArea.innerHTML = `
-                    <div class="team-form-container">
-                        <h2>📝 إضافة مهمة جديدة للطلاب</h2>
-                        <div class="form-card">
-                            <form id="add-task-form">
-                                <div class="form-group">
-                                    <label>عنوان المهمة</label>
-                                    <input type="text" class="form-input" placeholder="عنوان المهمة" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>تاريخ التسليم</label>
-                                    <input type="date" class="form-input" required>
-                                </div>
-                                <button type="submit" class="submit-btn">➕ تعيين المهمة</button>
-                            </form>
+            <div class="team-form-container">
+                <h2>📝 إضافة مهمة جديدة للطلاب</h2>
+                <div class="form-card">
+                    <form id="add-task-form" onsubmit="window.supervisorApp.handleAddTask(event)">
+                        
+                        <div class="form-group">
+                            <label>الفريق المستهدف</label>
+                            <select id="teamSelect" class="form-input" required>
+                                <option value="">جاري التحميل...</option>
+                            </select>
                         </div>
-                    </div>
-                `;
+
+                        <div class="form-group">
+                            <label>نوع المهمة</label>
+                            <select id="taskType" class="form-input" required>
+                                <option value="theory">📚 نظري</option>
+                                <option value="practical">💻 عملي</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>عنوان المهمة</label>
+                            <input type="text" id="taskTitle" class="form-input" placeholder="مثال: تحليل النظام" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>وصف المهمة</label>
+                            <textarea id="taskDesc" class="form-input" rows="4" placeholder="تفاصيل المطلوب..." required></textarea>
+                        </div>
+
+                        <div class="form-group">
+                             <label>وزن المهمة (نقاط)</label>
+                             <input type="number" id="taskWeight" class="form-input" min="1" max="50" placeholder="مثال: 15" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>تاريخ التسليم</label>
+                            <input type="date" id="taskDate" class="form-input" required>
+                        </div>
+
+                        <button type="submit" class="submit-btn" id="addTaskBtn">➕ إرسال المهمة</button>
+                    </form>
+                </div>
+            </div>
+        `;
+        // Load teams with Auth Wait
+        const runLoadTeams = () => {
+          if (window.supervisorApp.currentUser) {
+            if (window.supervisorApp.loadMyTeamsForSelect) window.supervisorApp.loadMyTeamsForSelect();
+          } else {
+            setTimeout(() => {
+              if (window.supervisorApp.currentUser) {
+                if (window.supervisorApp.loadMyTeamsForSelect) window.supervisorApp.loadMyTeamsForSelect();
+              } else {
+                const sel = document.getElementById('teamSelect');
+                if (sel) sel.innerHTML = '<option value="">يرجى تسجيل الدخول...</option>';
+              }
+            }, 1500);
+          }
+        };
+        runLoadTeams();
         break;
 
       case 'tasks-current':
-        contentArea.innerHTML = `<h2>📋 المهام الحالية</h2><p>قائمة المهام...</p>`;
+        contentArea.innerHTML = `
+            <div class="page-header">
+                <h2>📋 متابعة المهام الحالية</h2>
+            </div>
+            <div id="tasks-container" style="display: grid; gap: 20px;">
+                <div style="text-align: center; padding: 40px;">جاري تحميل المهام...</div>
+            </div>
+        `;
+
+        const runLoadTasks = () => {
+          if (window.supervisorApp.currentUser) {
+            window.supervisorApp.loadCurrentTasks();
+          } else {
+            setTimeout(() => {
+              if (window.supervisorApp.currentUser) {
+                window.supervisorApp.loadCurrentTasks();
+              } else {
+                document.getElementById('tasks-container').innerHTML = '<p style="color:red; text-align:center;">يرجى تسجيل الدخول لعرض المهام</p>';
+              }
+            }, 1500);
+          }
+        };
+        runLoadTasks();
         break;
 
       case 'tasks-completed':
-        contentArea.innerHTML = `<h2>✅ المهام المنفذة</h2><p>الأرشيف...</p>`;
+        const runLoadCompleted = () => {
+          if (window.supervisorApp.currentUser) {
+            window.supervisorApp.loadCompletedTasks();
+          } else {
+            setTimeout(() => {
+              if (window.supervisorApp.currentUser) window.supervisorApp.loadCompletedTasks();
+              else contentArea.innerHTML = '<p style="color:red; text-align:center;">يرجى تسجيل الدخول</p>';
+            }, 1500);
+          }
+        };
+        runLoadCompleted();
+        break;
+
+      case 'teams-progress':
+        const runLoadProgress = () => {
+          if (window.supervisorApp.currentUser) {
+            window.supervisorApp.loadTeamsProgressPage();
+          } else {
+            setTimeout(() => {
+              if (window.supervisorApp.currentUser) window.supervisorApp.loadTeamsProgressPage();
+              else contentArea.innerHTML = '<p style="color:red; text-align:center;">يرجى تسجيل الدخول</p>';
+            }, 1500);
+          }
+        };
+        runLoadProgress();
         break;
 
       default:
-        // Fallback
         window.supervisorApp.loadPage('dashboard');
     }
 
-    // Update active class if needed
     document.querySelectorAll('.dropdown-item').forEach(link => {
       // Optional: add visual active state logic
     });
@@ -249,13 +331,22 @@ window.supervisorApp = {
     try {
       select.innerHTML = '<option value="">-- اختر الفريق --</option>';
 
+<<<<<<< Updated upstream
       // Step 1: Get Projects for this Supervisor
       const projectsQuery = query(collection(db, "projects"), where("supervisorUID", "==", currentUid));
       const projectsSnap = await getDocs(projectsQuery);
+=======
+      // Step 1: Get Projects (Try both field names)
+      const pQuery1 = query(collection(db, "projects"), where("supervisorId", "==", currentUid));
+      const pQuery2 = query(collection(db, "projects"), where("supervisorUID", "==", currentUid));
+
+      const [snap1, snap2] = await Promise.all([getDocs(pQuery1), getDocs(pQuery2)]);
+>>>>>>> Stashed changes
 
       const projectIDs = [];
       const projectMap = {};
 
+<<<<<<< Updated upstream
       projectsSnap.forEach(p => {
         const data = p.data();
         projectIDs.push(p.id);
@@ -270,12 +361,35 @@ window.supervisorApp = {
 
       if (projectIDs.length > 0) {
         // Chunking for 'in' query limit (10)
+=======
+      const processSnap = (snap) => {
+        snap.forEach(p => {
+          const data = p.data();
+          if (!projectMap[p.id]) { // Avoid duplicates
+            projectIDs.push(p.id);
+            projectMap[p.id] = data.title || "مشروع";
+          }
+        });
+      };
+
+      processSnap(snap1);
+      processSnap(snap2);
+
+      console.log("📂 Found Projects:", projectIDs.length);
+
+      // Step 2: Fetch Teams
+      let teamsSnapStub = [];
+
+      if (projectIDs.length > 0) {
+        // Chunk query
+>>>>>>> Stashed changes
         const chunks = [];
         for (let i = 0; i < projectIDs.length; i += 10) {
           chunks.push(projectIDs.slice(i, i + 10));
         }
 
         for (const chunk of chunks) {
+<<<<<<< Updated upstream
           // FIX: Search by 'assignedProjectID' (capital ID)
           const q = query(collection(db, "teams"), where("assignedProjectID", "in", chunk));
           const snap = await getDocs(q);
@@ -283,11 +397,27 @@ window.supervisorApp = {
         }
       } else {
         console.log("⚠️ No projects found for this supervisor.");
+=======
+          // Query teams assigned to these projects (Check BOTH 'ID' and 'Id')
+          const q1 = query(collection(db, "teams"), where("assignedProjectID", "in", chunk));
+          const q2 = query(collection(db, "teams"), where("assignedProjectId", "in", chunk));
+
+          const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+
+          snap1.forEach(d => teamsSnapStub.push(d));
+          snap2.forEach(d => teamsSnapStub.push(d));
+        }
+      } else {
+        console.warn("⚠️ No projects found for this supervisor (tried both 'supervisorId' and 'supervisorUID').");
+        select.innerHTML = '<option disabled>لا توجد مشاريع مسندة إليك</option>';
+        return;
+>>>>>>> Stashed changes
       }
 
       console.log("👥 Total Teams Found:", teamsSnapStub.length);
 
       if (teamsSnapStub.length === 0) {
+<<<<<<< Updated upstream
         select.innerHTML += '<option disabled>لا توجد فرق مرتبطة بمشاريعك</option>';
 
         // Auto-run migration/standardization if no teams found but projects exist
@@ -295,6 +425,9 @@ window.supervisorApp = {
           console.log("🛠️ No teams found. Attempting to standardize data structure...");
           window.supervisorApp.standardizeTeams(); // Auto-call
         }
+=======
+        select.innerHTML = `<option disabled>وجدت ${projectIDs.length} مشاريع، ولكن لا توجد فرق مسندة لها</option>`;
+>>>>>>> Stashed changes
         return;
       }
 
@@ -306,12 +439,22 @@ window.supervisorApp = {
         processedIds.add(docSnap.id);
 
         const team = docSnap.data();
+<<<<<<< Updated upstream
         // FIX: Use 'teamName'
         const teamName = team.teamName || team.name || 'فريق بدون اسم';
         const projectTitle = projectMap[team.assignedProjectID] || "مشروع";
 
         // FIX: Display format [Project Name] - [Team Name]
         select.innerHTML += `<option value="${docSnap.id}">[${projectTitle}] - [${teamName}]</option>`;
+=======
+        const teamName = team.teamName || team.name || 'فريق بدون اسم';
+        // Handle both casing for lookup
+        const pId = team.assignedProjectID || team.assignedProjectId;
+        const projectTitle = projectMap[pId] || "مشروع";
+
+        // Use teamCode as value as requested
+        select.innerHTML += `<option value="${team.teamCode || docSnap.id}">[${projectTitle}] - [${teamName}]</option>`;
+>>>>>>> Stashed changes
       });
 
     } catch (error) {
@@ -320,6 +463,7 @@ window.supervisorApp = {
     }
   },
 
+<<<<<<< Updated upstream
   // 🛠️ Standardization & Proof Script
   standardizeTeams: async () => {
     console.log("🛡️ Starting Data Standardization Protocol (SOP)...");
@@ -387,6 +531,346 @@ window.supervisorApp = {
 
     } catch (e) {
       console.error("Standardization Failed:", e);
+=======
+  handleAddTask: async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('addTaskBtn');
+    btn.innerText = 'جاري الإرسال...';
+    btn.disabled = true;
+
+    try {
+      const teamCode = document.getElementById('teamSelect').value;
+      if (!teamCode) throw new Error("يرجى اختيار فريق");
+
+      const data = {
+        teamId: teamCode,
+        type: document.getElementById('taskType').value,
+        title: document.getElementById('taskTitle').value,
+        description: document.getElementById('taskDesc').value,
+        weight: parseInt(document.getElementById('taskWeight').value),
+        dueDate: document.getElementById('taskDate').value,
+        supervisorUID: window.supervisorApp.currentUser.uid,
+        status: 'pending', // pending -> submitted -> completed
+        createdAt: serverTimestamp(),
+        submissionLink: null
+      };
+
+      await setDoc(doc(collection(db, "tasks")), data);
+      alert("✅ تم إرسال المهمة بنجاح!");
+      document.getElementById('add-task-form').reset();
+
+    } catch (error) {
+      console.error(error);
+      alert("❌ خطأ: " + error.message);
+    } finally {
+      btn.innerText = '➕ إرسال المهمة';
+      btn.disabled = false;
+    }
+  },
+
+  loadCurrentTasks: async () => {
+    const container = document.getElementById('tasks-container');
+    const uid = window.supervisorApp.currentUser.uid;
+
+    try {
+      // Get tasks for this supervisor that are NOT completed
+      const q = query(
+        collection(db, "tasks"),
+        where("supervisorUID", "==", uid),
+        where("status", "in", ["pending", "submitted", "revision_requested"])
+      );
+
+      const snap = await getDocs(q);
+
+      if (snap.empty) {
+        container.innerHTML = `<div class="empty-state" style="text-align:center; padding:40px; background:white; border-radius:10px;">لا توجد مهام جارية حالياً</div>`;
+        return;
+      }
+
+      let html = '';
+
+      snap.forEach(docSnap => {
+        const task = docSnap.data();
+        const isSubmitted = task.status === 'submitted';
+
+        html += `
+                <div class="task-card" style="background: white; padding: 20px; border-radius: 12px; border-left: 5px solid ${task.type === 'theory' ? '#4299e1' : '#48bb78'}; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div>
+                            <span style="background: ${task.type === 'theory' ? '#ebf8ff' : '#f0fff4'}; color: ${task.type === 'theory' ? '#2b6cb0' : '#2f855a'}; padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold;">
+                                ${task.type === 'theory' ? '📚 نظري' : '💻 عملي'}
+                            </span>
+                            <h3 style="margin: 10px 0;">${task.title}</h3>
+                            <p style="color: #666; font-size: 0.9em; margin-bottom: 15px;">${task.description}</p>
+                            
+                            ${isSubmitted ? `
+                                <div style="background: #f0fff4; padding: 10px; border-radius: 8px; margin-top: 10px; border: 1px solid #c6f6d5;">
+                                    <strong>✅ تم تسليم الحل:</strong><br>
+                                    <a href="${task.submissionLink}" target="_blank" style="color: #2f855a; text-decoration: underline;">${task.submissionLink}</a>
+                                </div>
+                            ` : `<div style="color: #a0aec0; font-size: 0.9em;">⏳ بانتظار تسليم الطلاب...</div>`}
+                        </div>
+                        
+                        <div style="text-align: left; min-width: 150px;">
+                            <div style="font-weight: bold; font-size: 1.1em; color: #2d3748;">${task.weight} نقطة</div>
+                            <div style="font-size: 0.85em; color: #718096; margin-bottom: 15px;">آخر موعد: ${task.dueDate}</div>
+                            
+                            ${isSubmitted ? `
+                                <div style="display:flex; gap:5px; flex-direction:column;">
+                                    <button onclick="window.supervisorApp.acceptTask('${docSnap.id}', '${task.teamId}', '${task.type}', ${task.weight})" 
+                                        class="btn" style="background: #48bb78; color: white; width: 100%; padding: 8px;">
+                                        ✅ قبول وتقييم
+                                    </button>
+                                    <button onclick="window.supervisorApp.requestRevision('${docSnap.id}')" 
+                                        class="btn" style="background: #dd6b20; color: white; width: 100%; padding: 8px;">
+                                        ⚠️ طلب تعديل
+                                    </button>
+                                </div>
+                            ` : task.status === 'revision_requested' ? `
+                                <div style="color:#dd6b20; font-weight:bold;">⚠️ بانتظار التعديل...</div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+              `;
+      });
+
+      container.innerHTML = html;
+
+    } catch (e) {
+      console.error(e);
+      container.innerHTML = `<p style="color:red">خطأ في تحميل المهام</p>`;
+    }
+  },
+
+  loadCompletedTasks: async () => {
+    const contentArea = document.querySelector('.content-area');
+    contentArea.innerHTML = `
+        <div class="page-header"><h2>✅ المهام المنجزة (الأرشيف)</h2></div>
+        <div id="completed-tasks-container" style="display:grid; gap:20px;">
+             <div style="text-align:center;">جاري التحميل...</div>
+        </div>
+    `;
+
+    const uid = window.supervisorApp.currentUser.uid;
+    const container = document.getElementById('completed-tasks-container');
+
+    try {
+      const q = query(
+        collection(db, "tasks"),
+        where("supervisorUID", "==", uid),
+        where("status", "==", "completed")
+      );
+      const snap = await getDocs(q);
+
+      if (snap.empty) {
+        container.innerHTML = `<div class="empty-state">لا يوجد مهام مكتملة بعد</div>`;
+        return;
+      }
+
+      let html = '';
+      snap.forEach(d => {
+        const task = d.data();
+        html += `
+                <div class="task-card" style="background:#f0fff4; padding:20px; border-radius:12px; border-right:5px solid #48bb78; opacity:0.8;">
+                   <h3 style="color:#2f855a; text-decoration:line-through;">${task.title}</h3>
+                   <p>${task.description}</p>
+                   <div style="margin-top:10px; font-weight:bold;">الدرجة: ${task.weight}</div>
+                   ${task.submissionLink ? `<a href="${task.submissionLink}" target="_blank">رابط الحل المؤرشف</a>` : ''}
+                </div>
+            `;
+      });
+      container.innerHTML = html;
+
+    } catch (e) {
+      console.error(e);
+      container.innerHTML = "خطأ في التحميل";
+    }
+  },
+
+  requestRevision: async (taskId) => {
+    const feedback = prompt("اكتب ملاحظات التعديل للطالب:");
+    if (!feedback) return;
+
+    try {
+      await updateDoc(doc(db, "tasks", taskId), {
+        status: 'revision_requested',
+        feedback: feedback
+      });
+      alert("⚠️ تم إرسال طلب التعديل للطالب");
+      window.supervisorApp.loadCurrentTasks();
+    } catch (e) {
+      console.error(e);
+      alert("حدث خطأ: " + e.message);
+    }
+  },
+
+  acceptTask: async (taskId, teamCode, type, weight) => {
+    if (!confirm(`هل أنت متأكد من قبول هذه المهمة وإضافة ${weight} نقطة للفريق؟`)) return;
+
+    try {
+      // 1. Resolve Team Doc by teamCode (since ID != code potentially)
+      const q = query(collection(db, "teams"), where("teamCode", "==", teamCode));
+      const snap = await getDocs(q);
+
+      if (snap.empty) {
+        throw new Error(`Team with code ${teamCode} not found`);
+      }
+
+      const teamDocRef = snap.docs[0].ref;
+
+      await runTransaction(db, async (transaction) => {
+        const teamDoc = await transaction.get(teamDocRef);
+        if (!teamDoc.exists()) throw new Error("Team doc vanished");
+
+        const data = teamDoc.data();
+        let currentTheory = data.theoryProgress || 0;
+        let currentPractical = data.practicalProgress || 0;
+
+        if (type === 'theory') {
+          currentTheory = Math.min(50, currentTheory + weight); // Cap at 50
+        } else {
+          currentPractical = Math.min(50, currentPractical + weight); // Cap at 50
+        }
+
+        const newTotal = currentTheory + currentPractical;
+
+        // Update Team with progress
+        transaction.update(teamDocRef, {
+          theoryProgress: currentTheory,
+          practicalProgress: currentPractical,
+          totalProgress: newTotal
+        });
+
+        // Update Task Status
+        const taskRef = doc(db, "tasks", taskId);
+        transaction.update(taskRef, {
+          status: 'completed', // Auto-archive logic
+          completedAt: serverTimestamp()
+        });
+      });
+
+      alert("✅ تم قبول المهمة، وتحديث تقدم الفريق (Total: " + (await getDoc(teamDocRef)).data().totalProgress + "% )");
+      window.supervisorApp.loadCurrentTasks(); // Reload (Task should vanish)
+
+    } catch (e) {
+      console.error(e);
+      alert("❌ حدث خطأ: " + e.message);
+    }
+  },
+
+  loadTeamsProgressPage: async () => {
+    const contentArea = document.querySelector('.content-area');
+    contentArea.innerHTML = `
+            <div class="page-header"><h2>📊 إحصائيات الفرق (تقدم الإنجاز)</h2></div>
+            <div id="teams-stats-container">
+                 <div style="text-align:center;">جاري جلب البيانات...</div>
+            </div>
+        `;
+
+    const uid = window.supervisorApp.currentUser.uid;
+
+    try {
+      // 1. Get Supervisor Projects
+      const projectsQ = query(collection(db, "projects"), where("supervisorUID", "==", uid));
+      const projectsSnap = await getDocs(projectsQ);
+      const projectIDs = projectsSnap.docs.map(d => d.id); // Default ID
+      const projectIds = projectsSnap.docs.map(d => d.data().projectId); // Custom ID
+
+      // Merge IDs and filter out undefined/null/empty strings aggressively
+      const allProjIds = [...new Set([...projectIDs, ...projectIds])]
+        .filter(id => id !== undefined && id !== null && id !== '');
+
+      console.log("DEBUG: allProjIds for progress query:", allProjIds);
+
+      if (allProjIds.length === 0) {
+        document.getElementById('teams-stats-container').innerHTML = `<div class="empty-state">لا توجد مشاريع مسندة إليك</div>`;
+        return;
+      }
+
+      // 2. Fetch Teams (Chunked)
+      let teamsSnapStub = [];
+      const chunks = [];
+      for (let i = 0; i < allProjIds.length; i += 10) {
+        chunks.push(allProjIds.slice(i, i + 10));
+      }
+
+      for (const chunk of chunks) {
+        if (!chunk || chunk.length === 0) continue;
+
+        try {
+          const q1 = query(collection(db, "teams"), where("assignedProjectID", "in", chunk));
+          const q2 = query(collection(db, "teams"), where("assignedProjectId", "in", chunk));
+          const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+          snap1.forEach(d => teamsSnapStub.push(d));
+          snap2.forEach(d => teamsSnapStub.push(d));
+        } catch (err) {
+          console.warn("Error querying team chunk:", err);
+        }
+      }
+
+      // Deduplicate
+      const uniqueTeams = new Map();
+      teamsSnapStub.forEach(d => uniqueTeams.set(d.id, d.data()));
+
+      if (uniqueTeams.size === 0) {
+        document.getElementById('teams-stats-container').innerHTML = `<div class="empty-state">لا توجد فرق مرتبطة بمشاريعك</div>`;
+        return;
+      }
+
+      // 3. Render Table
+      let html = `
+                <table style="width:100%; border-collapse:collapse; background:white; border-radius:10px; overflow:hidden; box-shadow:0 4px 6px rgba(0,0,0,0.05);">
+                    <thead style="background:var(--primary); color:white;">
+                        <tr>
+                            <th style="padding:15px;">الفريق</th>
+                            <th style="padding:15px;">نظري (50)</th>
+                            <th style="padding:15px;">عملي (50)</th>
+                            <th style="padding:15px;">المجموع (100)</th>
+                            <th style="padding:15px;">الحالة</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+      uniqueTeams.forEach((team, id) => {
+        const total = team.totalProgress || 0;
+        let color = '#e53e3e'; // Red
+        let label = 'متأخر';
+
+        if (total > 30 && total <= 70) {
+          color = '#dd6b20'; // Orange
+          label = 'جاري العمل';
+        } else if (total > 70) {
+          color = '#38a169'; // Green
+          label = 'ممتاز';
+        }
+
+        html += `
+                    <tr style="border-bottom:1px solid #eee;">
+                        <td style="padding:15px; font-weight:bold;">${team.teamName || 'فريق بدون اسم'}<br><small style="color:#777;">${team.teamCode}</small></td>
+                        <td style="padding:15px; text-align:center;">${team.theoryProgress || 0}</td>
+                        <td style="padding:15px; text-align:center;">${team.practicalProgress || 0}</td>
+                        <td style="padding:15px; text-align:center;">
+                            <div style="background:#edf2f7; border-radius:10px; height:20px; width:100px; margin:0 auto; overflow:hidden;">
+                                <div style="width:${total}%; background:${color}; height:100%;"></div>
+                            </div>
+                            <span style="font-size:0.9em; font-weight:bold; color:${color};">${total}%</span>
+                        </td>
+                        <td style="padding:15px; text-align:center;">
+                            <span style="background:${color}22; color:${color}; padding:4px 10px; border-radius:15px; font-size:0.85em;">${label}</span>
+                        </td>
+                    </tr>
+                `;
+      });
+
+      html += `</tbody></table>`;
+      document.getElementById('teams-stats-container').innerHTML = html;
+
+    } catch (e) {
+      console.error(e);
+      document.getElementById('teams-stats-container').innerHTML = "خطأ في جلب البيانات";
+>>>>>>> Stashed changes
     }
   },
 

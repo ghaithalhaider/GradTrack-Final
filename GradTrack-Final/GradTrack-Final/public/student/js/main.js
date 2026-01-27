@@ -29,6 +29,12 @@ window.dashboardApp = {
             case 'settings-privacy':
                 PageLogic.loadSettingsPage('privacy');
                 break;
+            case 'tasks-current':
+                PageLogic.loadTasksPage('current');
+                break;
+            case 'tasks-completed':
+                PageLogic.loadTasksPage('completed');
+                break;
             default:
                 PageLogic.showDashboardHome();
         }
@@ -58,7 +64,8 @@ window.dashboardApp = {
     confirmSelection: PageLogic.confirmSelection,
     resetSelection: PageLogic.resetSelection,
     editProject: () => alert("Not implemented yet"),
-    goToTasks: () => alert("Not implemented yet"),
+    goToTasks: () => window.dashboardApp.loadPage('tasks-current'),
+    submitTask: PageLogic.submitTask,
 
     // Notifications
     toggleNotifications: PageLogic.toggleNotifications,
