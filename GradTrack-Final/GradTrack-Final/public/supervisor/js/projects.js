@@ -486,7 +486,8 @@ function createProjectCard(project) {
 
 // Publish all projects
 async function publishAllProjects() {
-    if (!confirm('هل أنت متأكد من نشر جميع المشاريع؟ سيتمكن الطلاب من رؤيتها واختيارها.')) {
+    const confirmed = await showConfirmModal("تأكيد النشر", 'هل أنت متأكد من نشر جميع المشاريع؟ سيتمكن الطلاب من رؤيتها واختيارها.');
+    if (!confirmed) {
         return;
     }
 
@@ -497,35 +498,36 @@ async function publishAllProjects() {
 
         await Promise.all(updatePromises);
 
-        alert('✅ تم نشر جميع المشاريع بنجاح! يمكن للطلاب الآن مشاهدتها واختيارها.');
+        showToast('✅ تم نشر جميع المشاريع بنجاح! يمكن للطلاب الآن مشاهدتها واختيارها.', 'success');
 
         await loadProjects();
 
     } catch (error) {
         console.error('Error publishing projects:', error);
-        alert('❌ حدث خطأ أثناء النشر');
+        showToast('❌ حدث خطأ أثناء النشر', 'error');
     }
 }
 
 // Edit project
 async function editProject(projectId) {
     // Implementation for editing project
-    alert('🔧 سيتم فتح نموذج التعديل قريباً');
+    showToast('🔧 سيتم فتح نموذج التعديل قريباً', 'info');
 }
 
 // Delete project
 async function deleteProject(projectId) {
-    if (!confirm('هل أنت متأكد من حذف هذا المشروع؟')) {
+    const confirmed = await showConfirmModal("تأكيد الحذف", 'هل أنت متأكد من حذف هذا المشروع؟');
+    if (!confirmed) {
         return;
     }
 
     try {
         await deleteDoc(doc(db, 'projects', projectId));
-        alert('✅ تم حذف المشروع بنجاح');
+        showToast('✅ تم حذف المشروع بنجاح', 'success');
         await loadProjects();
     } catch (error) {
         console.error('Error deleting project:', error);
-        alert('❌ حدث خطأ أثناء الحذف');
+        showToast('❌ حدث خطأ أثناء الحذف', 'error');
     }
 }
 

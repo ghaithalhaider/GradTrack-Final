@@ -92,10 +92,10 @@ window.adminApp = {
             await updateDoc(doc(db, "students", studentId), {
                 gpa: parseFloat(newGPA)
             });
-            alert("✅ تم حفظ المعدل بنجاح!");
+            showToast("✅ تم حفظ المعدل بنجاح!", 'success');
             await loadTeamsPage();
         } catch (error) {
-            alert("❌ خطأ: " + error.message);
+            showToast("❌ خطأ: " + error.message, 'error');
         }
     },
 
@@ -113,19 +113,21 @@ window.adminApp = {
     },
 
     deleteStudent: async (studentId) => {
-        if (confirm("هل أنت متأكد من حذف هذا الطالب؟ سيتم حذفه نهائياً.")) {
+        const confirmed = await showConfirmModal("تأكيد الحذف", "هل أنت متأكد من حذف هذا الطالب؟ سيتم حذفه نهائياً.");
+        if (confirmed) {
             try {
                 await deleteDoc(doc(db, "students", studentId));
-                alert("✅ تم الحذف بنجاح");
+                showToast("✅ تم الحذف بنجاح", 'success');
                 loadStudentsPage();
             } catch (error) {
-                alert("❌ خطأ: " + error.message);
+                showToast("❌ خطأ: " + error.message, 'error');
             }
         }
     },
 
     deleteTeam: async (teamId) => {
-        if (confirm("هل أنت متأكد من حذف هذا الفريق؟ سيتم فك ارتباط الأعضاء.")) {
+        const confirmed = await showConfirmModal("تأكيد الحذف", "هل أنت متأكد من حذف هذا الفريق؟ سيتم فك ارتباط الأعضاء.");
+        if (confirmed) {
             try {
                 // First find members and remove teamCode
                 const membersQuery = await getDocs(collection(db, "students")); // Ideally use query()
@@ -136,10 +138,10 @@ window.adminApp = {
                 });
 
                 await deleteDoc(doc(db, "teams", teamId));
-                alert("✅ تم حذف الفريق بنجاح");
+                showToast("✅ تم حذف الفريق بنجاح", 'success');
                 loadTeamsPage();
             } catch (error) {
-                alert("❌ خطأ: " + error.message);
+                showToast("❌ خطأ: " + error.message, 'error');
             }
         }
     },
@@ -759,7 +761,7 @@ async function loadSelectionsPage(filterType = 'morning') {
             <div style="padding: 20px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                     <h2>${title}</h2>
-                    <button onclick="if(confirm('هل أنت متأكد من حذف جميع الاختيارات لفرق ال${filterType === 'morning' ? 'صباحي' : 'مسائي'}؟ لا يمكن التراجع عن هذا الإجراء.')) window.adminApp.resetSelections('${filterType}')" 
+                    <button onclick="window.adminApp.handleResetSelections('${filterType}')" 
                         style="background: #e53e3e; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(229, 62, 62, 0.2);">
                         🗑️ تصفير الاختيارات (${filterType === 'morning' ? 'صباحي' : 'مسائي'})
                     </button>
@@ -849,6 +851,14 @@ async function loadSelectionsPage(filterType = 'morning') {
     }
 }
 
+// Handle Reset Selections Wrapper for Async Modal
+window.adminApp.handleResetSelections = async function (filterType) {
+    const confirmed = await showConfirmModal("تأكيد تصفير الاختيارات", `هل أنت متأكد من حذف جميع الاختيارات لفرق ال${filterType === 'morning' ? 'صباحي' : 'مسائي'}؟ لا يمكن التراجع عن هذا الإجراء.`);
+    if (confirmed) {
+        window.adminApp.resetSelections(filterType);
+    }
+}
+
 // Reset Selections
 window.adminApp.resetSelections = async function (filterType) {
     const loadingDiv = document.createElement('div');
@@ -893,9 +903,9 @@ window.adminApp.resetSelections = async function (filterType) {
 
         if (count > 0) {
             await batch.commit();
-            alert(`✅ تم حذف اختيارات ${count} فريق.`);
+            showToast(`✅ تم حذف اختيارات ${count} فريق.`, 'success');
         } else {
-            alert("⚠️ لا توجد فرق لديها اختيارات لحذفها في هذه الفئة.");
+            showToast("⚠️ لا توجد فرق لديها اختيارات لحذفها في هذه الفئة.", 'warning');
         }
 
         document.body.removeChild(loadingDiv);
@@ -903,7 +913,7 @@ window.adminApp.resetSelections = async function (filterType) {
 
     } catch (e) {
         document.body.removeChild(loadingDiv);
-        alert("❌ خطأ: " + e.message);
+        showToast("❌ خطأ: " + e.message, 'error');
     }
 };
 
@@ -1031,22 +1041,26 @@ window.adminApp.toggleGeneralProjectUpload = async function () {
                 "🎉 تم تفعيل الرفع! يمكنك الآن رفع المشاريع الجديدة",
                 'success'
             );
-            alert("✅ تم تفعيل رفع المشاريع وإرسال التنبيهات للاستاذين");
+            showToast("✅ تم تفعيل رفع المشاريع وإرسال التنبيهات للاستاذين", 'success');
         } else {
             await window.adminApp.sendNotificationToAllSupervisors(
                 "⚠️ تم تعطيل الرفع! لن تتمكن من رفع المشاريع الآن",
                 'warning'
             );
-            alert("❌ تم تعطيل رفع المشاريع");
+            showToast("❌ تم تعطيل رفع المشاريع", 'error');
         }
     } catch (error) {
-        alert("❌ خطأ: " + error.message);
+        showToast("❌ خطأ: " + error.message, 'error');
     }
 };
 
 window.adminApp.toggleGeneralStudentView = async function () {
+    const newValue = !window.adminApp.generalSettings.allowStudentView;
+    // Confirm if enabling view? Maybe not strict but user asked for "show projects" button issues.
+    // The issue described is "same problem" (native alert).
+    // Replacing alert with showToast.
+
     try {
-        const newValue = !window.adminApp.generalSettings.allowStudentView;
         await setDoc(doc(db, "settings", "general"), {
             allowStudentView: newValue
         }, { merge: true });
@@ -1059,22 +1073,30 @@ window.adminApp.toggleGeneralStudentView = async function () {
                 "👁️ يمكنك الآن مشاهدة المشاريع المتاحة!",
                 'success'
             );
-            alert("✅ تم إظهار المشاريع للطلاب وإرسال التنبيهات");
+            showToast("✅ تم إظهار المشاريع للطلاب وإرسال التنبيهات", 'success');
         } else {
             await window.adminApp.sendNotificationToAllStudents(
                 "🔒 تم إخفاء المشاريع مؤقتاً",
                 'info'
             );
-            alert("❌ تم إخفاء المشاريع");
+            showToast("❌ تم إخفاء المشاريع", 'warning');
         }
     } catch (error) {
-        alert("❌ خطأ: " + error.message);
+        showToast("❌ خطأ: " + error.message, 'error');
     }
 };
 
 window.adminApp.toggleGeneralPublishProjects = async function () {
+    const newValue = !window.adminApp.generalSettings.projectsPublished;
+
+    // If stopping, maybe confirm? User complained about the button logic.
+    // Native alert was the issue. I'll just change to Toast first.
+    // If it's a dangerous action (Stop Publishing), maybe a Confirm Modal?
+    // "Stop Publishing" (إيقاف النشر) sounds significant, but user context was "Same problem" referring to alert style.
+    // I will use Toast to be consistent with previous fixes unless destruction is implied.
+    // However, stopping publishing might just hide it. Let's stick to Toast.
+
     try {
-        const newValue = !window.adminApp.generalSettings.projectsPublished;
         await setDoc(doc(db, "settings", "general"), {
             projectsPublished: newValue
         }, { merge: true });
@@ -1087,16 +1109,16 @@ window.adminApp.toggleGeneralPublishProjects = async function () {
                 "📌 يمكنك الآن اختيار المشاريع التي تريدها!",
                 'success'
             );
-            alert("✅ تم بدء نشر المشاريع وإرسال التنبيهات للطلاب");
+            showToast("✅ تم بدء نشر المشاريع وإرسال التنبيهات للطلاب", 'success');
         } else {
             await window.adminApp.sendNotificationToAllStudents(
                 "🛑 توقف اختيار المشاريع مؤقتاً",
                 'warning'
             );
-            alert("❌ تم إيقاف النشر");
+            showToast("❌ تم إيقاف النشر", 'warning');
         }
     } catch (error) {
-        alert("❌ خطأ: " + error.message);
+        showToast("❌ خطأ: " + error.message, 'error');
     }
 };
 
@@ -1105,7 +1127,7 @@ window.adminApp.saveTeamMembersCount = async function () {
     try {
         const count = parseInt(document.getElementById('teamMembersCount').value);
         if (!count || count < 1 || count > 10) {
-            alert("❌ الرجاء إدخال عدد صحيح بين 1 و 10");
+            showToast("❌ الرجاء إدخال عدد صحيح بين 1 و 10", 'error');
             return;
         }
 
@@ -1115,9 +1137,9 @@ window.adminApp.saveTeamMembersCount = async function () {
 
         window.adminApp.generalSettings.teamMembersCount = count;
         document.getElementById('currentTeamCount').textContent = count;
-        alert(`✅ تم حفظ عدد أعضاء الفريق: ${count}`);
+        showToast(`✅ تم حفظ عدد أعضاء الفريق: ${count}`, 'success');
     } catch (error) {
-        alert("❌ خطأ: " + error.message);
+        showToast("❌ خطأ: " + error.message, 'error');
     }
 };
 
@@ -1126,7 +1148,7 @@ window.adminApp.saveRequiredProjectsCount = async function () {
     try {
         const count = parseInt(document.getElementById('requiredProjectsCount').value);
         if (!count || count < 1 || count > 20) {
-            alert("❌ الرجاء إدخال عدد صحيح بين 1 و 20");
+            showToast("❌ الرجاء إدخال عدد صحيح بين 1 و 20", 'warning');
             return;
         }
 
@@ -1136,9 +1158,9 @@ window.adminApp.saveRequiredProjectsCount = async function () {
 
         window.adminApp.generalSettings.requiredProjectsCount = count;
         document.getElementById('currentProjectCount').textContent = count;
-        alert(`✅ تم حفظ عدد المشاريع المطلوبة: ${count}`);
+        showToast(`✅ تم حفظ عدد المشاريع المطلوبة: ${count}`, 'success');
     } catch (error) {
-        alert("❌ خطأ: " + error.message);
+        showToast("❌ خطأ: " + error.message, 'error');
     }
 };
 
@@ -1391,7 +1413,7 @@ async function loadDistributionPage() {
                     </div>
 
                     <div style="text-align:center; padding-top:20px; border-top:1px solid #eee;">
-                        <button onclick="if(confirm('هل أنت متأكد؟ سيتم حذف جميع النتائج الحالية!')) window.adminApp.resetDistribution()" 
+                        <button onclick="window.adminApp.handleResetDistribution()" 
                             style="padding: 10px 20px; font-size: 0.9em; color: #e53e3e; background: none; border: 2px solid #e53e3e; border-radius: 50px; cursor: pointer; transition: all 0.2s;">
                             🔄 إعادة تعيين التوزيع
                         </button>
@@ -1410,12 +1432,13 @@ async function loadDistributionPage() {
 window.adminApp.runDistributionAlgorithm = async function (filterType) {
     // Validate Input
     if (!filterType || (filterType !== 'صباحية' && filterType !== 'مسائية')) {
-        alert("خطأ: نوع الدراسة غير محدد (صباحية/مسائية)");
+        showToast("خطأ: نوع الدراسة غير محدد (صباحية/مسائية)", 'error');
         return;
     }
 
     const typeLabel = filterType === 'صباحية' ? 'الصباحية' : 'المسائية';
-    if (!confirm(`هل أنت متأكد من بدء عملية التوزيع للدراسة ${typeLabel}؟\nسيتم توزيع المشاريع على الفرق ${typeLabel} فقط.`)) return;
+    const confirmed = await showConfirmModal("بدء التوزيع", `هل أنت متأكد من بدء عملية التوزيع للدراسة ${typeLabel}؟\nسيتم توزيع المشاريع على الفرق ${typeLabel} فقط.`);
+    if (!confirmed) return;
 
     const loadingDiv = document.createElement('div');
     loadingDiv.id = 'distLoading';
@@ -1557,7 +1580,11 @@ window.adminApp.runDistributionAlgorithm = async function (filterType) {
             summary += `🚨 تنبيه: يوجد تكرار في ${result.statistics.duplicateProjects.length} مشروع!\n`;
         }
 
-        alert(summary);
+        // Show Success Summary (Using a modal maybe better, but toast for now as per instructions for simple alerts, or I can use a long timeout toast)
+        // Since summary is long, maybe console log it and show simple success toast.
+        // Actually, user wants to see the success.
+        console.log(summary);
+        showToast("✅ تمت عملية التوزيع بنجاح! راجع النتائج.", 'success');
 
         // Reload page to show results
         loadDistributionPage();
@@ -1567,7 +1594,7 @@ window.adminApp.runDistributionAlgorithm = async function (filterType) {
         if (document.body.contains(loadingDiv)) {
             document.body.removeChild(loadingDiv);
         }
-        alert("❌ حدث خطأ أثناء التوزيع: " + error.message);
+        showToast("❌ حدث خطأ أثناء التوزيع: " + error.message, 'error');
     }
 };
 
@@ -1593,11 +1620,19 @@ window.adminApp.resetDistribution = async function () {
 
         await batch.commit();
         document.body.removeChild(loadingDiv);
-        alert("✅ تم إعادة تعيين التوزيع.");
+        showToast("✅ تم إعادة تعيين التوزيع.", 'success');
         loadDistributionPage();
     } catch (e) {
         document.body.removeChild(loadingDiv);
-        alert("❌ خطأ: " + e.message);
+        showToast("❌ خطأ: " + e.message, 'error');
+    }
+}
+
+// Handle Reset Distribution Wrapper
+window.adminApp.handleResetDistribution = async function () {
+    const confirmed = await showConfirmModal("إعادة تعيين التوزيع", 'هل أنت متأكد؟ سيتم حذف جميع النتائج الحالية!');
+    if (confirmed) {
+        window.adminApp.resetDistribution();
     }
 }
 
@@ -1854,7 +1889,7 @@ async function loadProfessorsManagementPage() {
 // Generate Tokens
 window.adminApp.generateProfessorTokens = async () => {
     const count = parseInt(document.getElementById('tokenCount').value);
-    if (!count || count < 1) return alert("العدد غير صحيح");
+    if (!count || count < 1) return showToast("العدد غير صحيح", 'warning');
 
     // UI Loading state
     const btn = document.querySelector('button[onclick*="generateProfessorTokens"]');
@@ -1880,7 +1915,7 @@ window.adminApp.generateProfessorTokens = async () => {
         }
 
         await batch.commit();
-        alert(`✅ تم توليد ${count} كود بنجاح!`);
+        showToast(`✅ تم توليد ${count} كود بنجاح!`, 'success');
         loadProfessorsManagementPage(); // Reload table
 
     } catch (error) {

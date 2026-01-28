@@ -1456,7 +1456,7 @@ export async function loadTasksPage(viewType = 'current') {
 }
 
 export async function submitTask(taskId) {
-    const link = prompt("أدخل رابط ملف الحل (Google Drive, GitHub, etc):");
+    const link = await showPromptModal("تسليم المهمة", "أدخل رابط ملف الحل (google Drive, Github, etc):", "https://example.com/...");
     if (!link) return;
 
     try {
@@ -1467,11 +1467,11 @@ export async function submitTask(taskId) {
             submittedAt: serverTimestamp(),
             feedback: null // Clear feedback on resubmit
         });
-        alert("✅ تم تسليم المهمة بنجاح!");
+        showToast("✅ تم تسليم المهمة بنجاح!", 'success');
         loadTasksPage('current'); // Reload
     } catch (error) {
         console.error(error);
-        alert("❌ خطأ في التسليم: " + error.message);
+        showToast("❌ خطأ في التسليم: " + error.message, 'error');
     }
 }
 

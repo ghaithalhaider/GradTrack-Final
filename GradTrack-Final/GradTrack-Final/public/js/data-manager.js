@@ -315,7 +315,10 @@ window.generateTeams = async () => {
                 theoryProgress: 0,
                 practicalProgress: 0,
                 totalProgress: 0
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
             });
 
             // Update Members

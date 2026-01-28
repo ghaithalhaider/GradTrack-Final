@@ -176,8 +176,8 @@ window.supervisorApp = {
                 }
               } else {
                 console.error("No user logged in for projects init");
-                alert("يرجى تسجيل الدخول للوصول إلى هذه الصفحة");
                 if (loader) loader.innerHTML = '<p style="color:red">يرجى تسجيل الدخول</p>';
+                showToast("يرجى تسجيل الدخول للوصول إلى هذه الصفحة", 'warning');
               }
             }, 1500);
           }
@@ -333,13 +333,22 @@ window.supervisorApp = {
     try {
       select.innerHTML = '<option value="">-- اختر الفريق --</option>';
 
+<<<<<<< Updated upstream
       // Step 1: Get Projects for this Supervisor
       const projectsQuery = query(collection(db, "projects"), where("supervisorUID", "==", currentUid));
       const projectsSnap = await getDocs(projectsQuery);
+=======
+      // Step 1: Get Projects (Try both field names)
+      const pQuery1 = query(collection(db, "projects"), where("supervisorId", "==", currentUid));
+      const pQuery2 = query(collection(db, "projects"), where("supervisorUID", "==", currentUid));
+
+      const [snap1, snap2] = await Promise.all([getDocs(pQuery1), getDocs(pQuery2)]);
+>>>>>>> Stashed changes
 
       const projectIDs = [];
       const projectMap = {};
 
+<<<<<<< Updated upstream
       projectsSnap.forEach(p => {
         const data = p.data();
         projectIDs.push(p.id);
@@ -354,12 +363,35 @@ window.supervisorApp = {
 
       if (projectIDs.length > 0) {
         // Chunking for 'in' query limit (10)
+=======
+      const processSnap = (snap) => {
+        snap.forEach(p => {
+          const data = p.data();
+          if (!projectMap[p.id]) { // Avoid duplicates
+            projectIDs.push(p.id);
+            projectMap[p.id] = data.title || "مشروع";
+          }
+        });
+      };
+
+      processSnap(snap1);
+      processSnap(snap2);
+
+      console.log("📂 Found Projects:", projectIDs.length);
+
+      // Step 2: Fetch Teams
+      let teamsSnapStub = [];
+
+      if (projectIDs.length > 0) {
+        // Chunk query
+>>>>>>> Stashed changes
         const chunks = [];
         for (let i = 0; i < projectIDs.length; i += 10) {
           chunks.push(projectIDs.slice(i, i + 10));
         }
 
         for (const chunk of chunks) {
+<<<<<<< Updated upstream
           // FIX: Search by 'assignedProjectID' (capital ID)
           const q = query(collection(db, "teams"), where("assignedProjectID", "in", chunk));
           const snap = await getDocs(q);
@@ -367,6 +399,19 @@ window.supervisorApp = {
         }
       } else {
         console.log("⚠️ No projects found for this supervisor.");
+=======
+          // Query teams assigned to these projects (Check BOTH 'ID' and 'Id')
+          const q1 = query(collection(db, "teams"), where("assignedProjectID", "in", chunk));
+          const q2 = query(collection(db, "teams"), where("assignedProjectId", "in", chunk));
+
+          const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+
+          snap1.forEach(d => teamsSnapStub.push(d));
+          snap2.forEach(d => teamsSnapStub.push(d));
+        }
+      } else {
+        console.warn("⚠️ No projects found for this supervisor (tried both 'supervisorId' and 'supervisorUID').");
+>>>>>>> Stashed changes
         select.innerHTML = '<option disabled>لا توجد مشاريع مسندة إليك</option>';
         return;
       }
@@ -374,6 +419,7 @@ window.supervisorApp = {
       console.log("👥 Total Teams Found:", teamsSnapStub.length);
 
       if (teamsSnapStub.length === 0) {
+<<<<<<< Updated upstream
         select.innerHTML += '<option disabled>لا توجد فرق مرتبطة بمشاريعك</option>';
 
         // Auto-run migration/standardization if no teams found but projects exist
@@ -381,6 +427,9 @@ window.supervisorApp = {
           console.log("🛠️ No teams found. Attempting to standardize data structure...");
           window.supervisorApp.standardizeTeams(); // Auto-call
         }
+=======
+        select.innerHTML = `<option disabled>وجدت ${projectIDs.length} مشاريع، ولكن لا توجد فرق مسندة لها</option>`;
+>>>>>>> Stashed changes
         return;
       }
 
@@ -392,12 +441,22 @@ window.supervisorApp = {
         processedIds.add(docSnap.id);
 
         const team = docSnap.data();
+<<<<<<< Updated upstream
         // FIX: Use 'teamName'
         const teamName = team.teamName || team.name || 'فريق بدون اسم';
         const projectTitle = projectMap[team.assignedProjectID] || "مشروع";
 
         // FIX: Display format [Project Name] - [Team Name]
         select.innerHTML += `<option value="${docSnap.id}">[${projectTitle}] - [${teamName}]</option>`;
+=======
+        const teamName = team.teamName || team.name || 'فريق بدون اسم';
+        // Handle both casing for lookup
+        const pId = team.assignedProjectID || team.assignedProjectId;
+        const projectTitle = projectMap[pId] || "مشروع";
+
+        // Use teamCode as value as requested
+        select.innerHTML += `<option value="${team.teamCode || docSnap.id}">[${projectTitle}] - [${teamName}]</option>`;
+>>>>>>> Stashed changes
       });
 
     } catch (error) {
@@ -406,6 +465,7 @@ window.supervisorApp = {
     }
   },
 
+<<<<<<< Updated upstream
   // 🛠️ Standardization & Proof Script
   standardizeTeams: async () => {
     console.log("🛡️ Starting Data Standardization Protocol (SOP)...");
@@ -475,6 +535,8 @@ window.supervisorApp = {
       console.error("Standardization Failed:", e);
     }
   },
+=======
+>>>>>>> Stashed changes
   handleAddTask: async (e) => {
     e.preventDefault();
     const btn = document.getElementById('addTaskBtn');
@@ -499,12 +561,12 @@ window.supervisorApp = {
       };
 
       await setDoc(doc(collection(db, "tasks")), data);
-      alert("✅ تم إرسال المهمة بنجاح!");
+      showToast("✅ تم إرسال المهمة بنجاح!", 'success');
       document.getElementById('add-task-form').reset();
 
     } catch (error) {
       console.error(error);
-      alert("❌ خطأ: " + error.message);
+      showToast("❌ خطأ: " + error.message, 'error');
     } finally {
       btn.innerText = '➕ إرسال المهمة';
       btn.disabled = false;
@@ -632,7 +694,7 @@ window.supervisorApp = {
   },
 
   requestRevision: async (taskId) => {
-    const feedback = prompt("اكتب ملاحظات التعديل للطالب:");
+    const feedback = await showPromptModal("طلب تعديل", "اكتب ملاحظات التعديل للطالب:");
     if (!feedback) return;
 
     try {
@@ -640,16 +702,17 @@ window.supervisorApp = {
         status: 'revision_requested',
         feedback: feedback
       });
-      alert("⚠️ تم إرسال طلب التعديل للطالب");
+      showToast("⚠️ تم إرسال طلب التعديل للطالب", 'warning');
       window.supervisorApp.loadCurrentTasks();
     } catch (e) {
       console.error(e);
-      alert("حدث خطأ: " + e.message);
+      showToast("حدث خطأ: " + e.message, 'error');
     }
   },
 
   acceptTask: async (taskId, teamCode, type, weight) => {
-    if (!confirm(`هل أنت متأكد من قبول هذه المهمة وإضافة ${weight} نقطة للفريق؟`)) return;
+    const confirmed = await showConfirmModal("تأكيد القبول", `هل أنت متأكد من قبول هذه المهمة وإضافة ${weight} نقطة للفريق؟`);
+    if (!confirmed) return;
 
     try {
       // 1. Resolve Team Doc by teamCode (since ID != code potentially)
@@ -693,12 +756,12 @@ window.supervisorApp = {
         });
       });
 
-      alert("✅ تم قبول المهمة، وتحديث تقدم الفريق (Total: " + (await getDoc(teamDocRef)).data().totalProgress + "% )");
+      showToast("✅ تم قبول المهمة، وتحديث تقدم الفريق (Total: " + (await getDoc(teamDocRef)).data().totalProgress + "% )", 'success');
       window.supervisorApp.loadCurrentTasks(); // Reload (Task should vanish)
 
     } catch (e) {
       console.error(e);
-      alert("❌ حدث خطأ: " + e.message);
+      showToast("❌ حدث خطأ: " + e.message, 'error');
     }
   },
 
@@ -813,7 +876,10 @@ window.supervisorApp = {
     } catch (e) {
       console.error(e);
       document.getElementById('teams-stats-container').innerHTML = "خطأ في جلب البيانات";
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
     }
   },
 

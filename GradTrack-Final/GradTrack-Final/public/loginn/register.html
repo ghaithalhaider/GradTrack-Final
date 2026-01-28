@@ -75,9 +75,15 @@
                 <button type="submit" class="btn" style="width:100%;">إنشاء الحساب</button>
             </form>
 
-            <p class="text-center mt-4">
-                لديك حساب بالفعل؟ <a href="login.html" style="color:var(--primary);">سجل الدخول</a>
-            </p>
+            <div class="auth-footer">
+                لديك حساب بالفعل؟ <a href="login.html">سجّل دخولك</a>
+                <div style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px;">
+                    <a href="../index.html"
+                        style="color: #667eea; text-decoration: none; font-size: 1em; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; font-family: 'Cairo', sans-serif; transition: color 0.3s;">
+                        🏠 العودة للرئيسية
+                    </a>
+                </div>
+            </div>
             <div id="error-msg" style="color:red; text-align:center; display:none; margin-top:10px;"></div>
         </div>
     </div>
@@ -113,7 +119,7 @@
                     throw new Error("اسم المستخدم محجوز مسبقاً.");
                 }
 
-                // 2. Create Auth User
+                // 2.ءء Create Auth User
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 const user = userCredential.user;
 
