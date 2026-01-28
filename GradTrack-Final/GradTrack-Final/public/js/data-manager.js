@@ -307,18 +307,8 @@ window.generateTeams = async () => {
                 memberUIDs: memberUIDs,
                 memberUsernames: memberNames, // Store names too
                 studyType: studyType,
-                createdAt: serverTimestamp(),
-                assignedProjectID: null, // Initial State
-                status: 'pending',
-                leaderUID: memberUIDs[0], // Assign first as leader
-                selectedProjects: [],
-                theoryProgress: 0,
-                practicalProgress: 0,
-                totalProgress: 0
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
+                createdAt: new Date().toISOString(),
+                status: 'pending' // pending project assignment
             });
 
             // Update Members
