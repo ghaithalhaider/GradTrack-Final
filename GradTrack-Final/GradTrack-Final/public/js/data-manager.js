@@ -483,7 +483,7 @@ window.clearProfessors = async () => {
     }
 };
 
-// Bind to form
+// Bind too form
 document.addEventListener('DOMContentLoaded', () => {
     const studentForm = document.getElementById('studentGenForm');
     if (studentForm) studentForm.addEventListener('submit', window.generateStudents);
