@@ -1304,3 +1304,174 @@ export function loadSettingsPage(type = 'general') {
         </div>
     `;
 }
+
+// ===========================================
+// Tasks Logic
+// ===========================================
+export async function loadTasksPage(viewType = 'current') {
+    const contentArea = document.querySelector('.content-area');
+    contentArea.innerHTML = `<div class="loading-container"><div class="spinner"></div><h2>جاري تحميل المهام...</h2></div>`;
+
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+        // 1. Get Student Data to find Team Code
+        const studentRef = doc(db, "students", user.uid);
+        // 1. Get Student Data to find Team Code
+
+        const studentSnap = await getDoc(studentRef);
+
+        if (!studentSnap.exists()) {
+            contentArea.innerHTML = `<div class="error-message">❌ عذراً، لم يتم العثور على ملف الطالب.</div>`;
+            return;
+        }
+
+        const studentData = studentSnap.data();
+
+        if (!studentData.teamCode) {
+            contentArea.innerHTML = `
+                <div class="empty-state">
+                    <h3>❌ لست عضواً في أي فريق</h3>
+                    <p>يجب أن تنضم إلى فريق أولاً لتلقي المهام.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // 2. Query Tasks for this Team
+        const tasksRef = collection(db, "tasks");
+        let q;
+
+        if (viewType === 'current') {
+            q = query(
+                tasksRef,
+                where("teamId", "==", studentData.teamCode),
+                where("status", "in", ["pending", "submitted", "revision_requested"])
+            );
+        } else {
+            q = query(
+                tasksRef,
+                where("teamId", "==", studentData.teamCode),
+                where("status", "==", "completed")
+            );
+        }
+
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            contentArea.innerHTML = `
+                <div class="empty-state">
+                    <h3>${viewType === 'current' ? '📭 لا توجد مهام حالية' : '✅ سجل المهام فارغ'}</h3>
+                    <p>${viewType === 'current' ? 'لم يرسل المشرف أي مهام جديدة بعد.' : 'لم يتم إكمال أي مهام حتى الآن.'}</p>
+                </div>
+            `;
+            return;
+        }
+
+        // 3. Render Tasks
+        let html = `
+            <div class="tasks-container">
+                <div class="page-header">
+                    <h2>${viewType === 'current' ? '📋 المهام الحالية' : '✅ المهام المنجزة'}</h2>
+                </div>
+                <div class="tasks-grid" style="display:grid; gap:20px;">
+        `;
+
+        querySnapshot.forEach(docSnap => {
+            const task = docSnap.data();
+            const taskId = docSnap.id;
+            const isTheory = task.type === 'theory';
+            const isRevision = task.status === 'revision_requested';
+
+            html += `
+                <div class="task-card" style="background:white; padding:20px; border-radius:12px; border-right: 5px solid ${isTheory ? '#4299e1' : '#48bb78'}; box-shadow:0 2px 10px rgba(0,0,0,0.05);">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+                        <span class="badge" style="background:${isTheory ? '#ebf8ff' : '#f0fff4'}; color:${isTheory ? '#2b6cb0' : '#2f855a'}; padding:5px 12px; border-radius:15px; font-size:0.85rem;">
+                            ${isTheory ? '📚 نظري' : '💻 عملي'}
+                        </span>
+                        <span style="color:#718096; font-size:0.9rem;">📅 تسليم: ${task.dueDate}</span>
+                    </div>
+                    
+                    <h3 style="margin-bottom:10px; color:#2d3748;">${task.title}</h3>
+                    <p style="color:#4a5568; line-height:1.6; margin-bottom:20px;">${task.description}</p>
+                    
+                    ${isRevision ? `
+                        <div style="background:#fffaf0; border:1px solid #fbd38d; padding:15px; border-radius:8px; margin-bottom:20px; animation: pulse 2s infinite;">
+                            <strong style="color:#c05621; display:flex; align-items:center;">
+                                <span style="font-size:1.2em; margin-left:5px;">⚠️</span> 
+                                طلب تعديل من المشرف
+                            </strong>
+                            <p style="margin-top:10px; color:#744210; background:rgba(255,255,255,0.5); padding:10px; border-radius:5px;">
+                                "${task.feedback || "يرجى مراجعة ملاحظات المشرف وتعديل الحل."}"
+                            </p>
+                        </div>
+                    ` : ''}
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #e2e8f0; padding-top:15px;">
+                        <span style="font-weight:bold; color:#2d3748;">⚖️ الوزن: ${task.weight} نقطة</span>
+                        
+                        ${task.status === 'pending' || isRevision ? `
+                            <button onclick="window.dashboardApp.submitTask('${taskId}')" class="btn btn-primary" style="padding:10px 25px; ${isRevision ? 'background:#ed8936;' : ''}">
+                                ${isRevision ? '🔄 إعادة رفع الحل' : '📤 تسليم المهمة'}
+                            </button>
+                        ` : task.status === 'submitted' ? `
+                            <span style="color:#38a169; font-weight:bold; background:#f0fff4; padding:5px 10px; border-radius:5px;">✅ تم التسليم (بانتظار التقييم)</span>
+                        ` : `
+                            <span style="color:#2b6cb0; font-weight:bold;">🏅 تم التقييم</span>
+                        `}
+                    </div>
+                    
+                    ${task.submissionLink ? `
+                        <div style="margin-top:10px; font-size:0.9rem;">
+                            🔗 الرابط: <a href="${task.submissionLink}" target="_blank" style="color:blue;">${task.submissionLink}</a>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        });
+
+        html += `</div></div>`;
+
+        // Add style for pulse animation
+        if (!document.getElementById('revision-style')) {
+            const style = document.createElement('style');
+            style.id = 'revision-style';
+            style.innerHTML = `
+                @keyframes pulse {
+                    0% { box-shadow: 0 0 0 0 rgba(237, 137, 54, 0.4); }
+                    70% { box-shadow: 0 0 0 10px rgba(237, 137, 54, 0); }
+                    100% { box-shadow: 0 0 0 0 rgba(237, 137, 54, 0); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        contentArea.innerHTML = html;
+
+    } catch (error) {
+        console.error("Error loading tasks:", error);
+        contentArea.innerHTML = `<p style="color:red; text-align:center;">حدث خطأ أثناء تحميل المهام: ${error.message}</p>`;
+    }
+}
+
+export async function submitTask(taskId) {
+    const link = prompt("أدخل رابط ملف الحل (Google Drive, GitHub, etc):");
+    if (!link) return;
+
+    try {
+        const taskRef = doc(db, "tasks", taskId);
+        await updateDoc(taskRef, {
+            submissionLink: link,
+            status: 'submitted',
+            submittedAt: serverTimestamp(),
+            feedback: null // Clear feedback on resubmit
+        });
+        alert("✅ تم تسليم المهمة بنجاح!");
+        loadTasksPage('current'); // Reload
+    } catch (error) {
+        console.error(error);
+        alert("❌ خطأ في التسليم: " + error.message);
+    }
+}
+
